@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Track a Shipment — Global Network Transit</title>
+<meta name="description" content="Enter your Global Network Transit tracking ID to see live status, route, and estimated delivery — or generate a demo shipment from China to any address.">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="7" width="15" height="11"/><path d="M16 10h4l3 3v5h-7z"/><circle cx="5.5" cy="20" r="1.8"/><circle cx="18.5" cy="20" r="1.8"/></svg>
+      </span>
+      <span>Global Network<br><small>TRANSIT &middot; GNT-LOGISTICS</small></span>
+    </a>
+    <nav class="main-nav" aria-label="Primary">
+      <a href="index.html">Home &amp; Services</a>
+      <a href="about-contact.html">About &amp; Contact</a>
+      <a href="tracking.html" class="nav-cta is-active">Track Shipment</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ============================================================ TRACK HERO -->
+<section class="track-hero">
+  <div class="wrap">
+    <span class="eyebrow hero-eyebrow">Shipment Tracking</span>
+    <h1 style="color:white; font-size:clamp(34px,4.4vw,50px); margin-top:14px;">Follow it from China<br>to your door.</h1>
+    <p class="breadcrumb"><a href="index.html">Home</a> <span>/</span> Track a Shipment</p>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="track-panel">
+
+    <div style="display:grid; grid-template-columns:1fr; gap:28px;">
+
+      <!-- Track existing ID -->
+      <form id="trackForm">
+        <span class="eyebrow" style="margin-bottom:12px;">Have a tracking ID?</span>
+        <div class="track-form-row" style="margin-top:12px;">
+          <div class="field">
+            <label for="trackId">Tracking ID</label>
+            <input id="trackId" type="text" placeholder="e.g. GNT-4471928-CN" autocomplete="off">
+          </div>
+          <button type="submit" class="btn btn-signal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            Track Shipment
+          </button>
+        </div>
+        <p class="track-sample">Try a live demo ID:
+          <button type="button" data-demo="GNT-4471928-CN">GNT-4471928-CN</button> &middot;
+          <button type="button" data-demo="GNT-8802341-CN">GNT-8802341-CN</button>
+        </p>
+        <div class="track-error" id="trackError">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/></svg>
+          <span>We couldn't find that tracking ID. Double-check it, or generate a demo shipment below.</span>
+        </div>
+      </form>
+
+      <div style="border-top:1px dashed var(--line);"></div>
+
+      <!-- Generate a demo shipment -->
+      <form id="generateForm">
+        <span class="eyebrow" style="margin-bottom:12px;">Don't have an ID yet?</span>
+        <p style="font-size:13.5px; color:#6B7686; margin:10px 0 14px; max-width:640px;">
+          Generate a sample shipment picked up from one of our China origin hubs to any destination address.
+          This creates a placeholder tracking record for demo purposes, pickup and destination logic can be
+          connected to real carrier data later.
+        </p>
+        <div class="track-form-row">
+          <div class="field">
+            <label for="destInput">Delivery address (city, region, or country)</label>
+            <input id="destInput" type="text" placeholder="e.g. Austin, Texas, USA" autocomplete="off" required>
+          </div>
+          <button type="submit" class="btn btn-navy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Generate Tracking ID
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ RESULTS -->
+<section class="section" id="results">
+  <div class="wrap">
+    <div class="track-results" id="trackResults">
+
+      <div class="track-summary">
+        <div class="summary-cell">
+          <span>Tracking ID</span>
+          <b class="mono" id="sumId">—</b>
+        </div>
+        <div class="summary-cell">
+          <span>Status</span>
+          <b class="status-live" id="sumStatus">—</b>
+        </div>
+        <div class="summary-cell">
+          <span>Origin</span>
+          <b id="sumOrigin">—</b>
+        </div>
+        <div class="summary-cell">
+          <span>Estimated Delivery</span>
+          <b id="sumEta">—</b>
+        </div>
+      </div>
+
+      <div class="track-columns">
+        <div>
+          <div class="map-wrap">
+            <div id="trackMap"></div>
+            <div class="map-legend">
+              <span><span class="dot" style="background:#FF5A1F;"></span>Origin (China)</span>
+              <span><span class="dot" style="background:#1C8A5B;"></span>Destination</span>
+            </div>
+          </div>
+          <p id="mapNote" style="font-size:12px; color:#7A8792; margin-top:10px; font-family:var(--font-mono);"></p>
+        </div>
+
+        <div>
+          <span class="eyebrow" style="margin-bottom:18px;">Shipment Progress</span>
+          <div class="stage-list" id="stageList" style="margin-top:18px;"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ FOOTER -->
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div class="footer-brand">
+      <a href="index.html" class="brand" style="color:white;">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="7" width="15" height="11"/><path d="M16 10h4l3 3v5h-7z"/><circle cx="5.5" cy="20" r="1.8"/><circle cx="18.5" cy="20" r="1.8"/></svg></span>
+        <span>Global Network<br><small>TRANSIT &middot; GNT-LOGISTICS</small></span>
+      </a>
+      <p>We move freight by air, sea, and ground, with one manifest number and full visibility from pickup to final mile.</p>
+    </div>
+    <div>
+      <h4>Sitemap</h4>
+      <ul>
+        <li><a href="index.html">Home &amp; Services</a></li>
+        <li><a href="about-contact.html">About Us</a></li>
+        <li><a href="about-contact.html#contact">Contact Us</a></li>
+        <li><a href="tracking.html">Track a Shipment</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Services</h4>
+      <ul>
+        <li><a href="index.html#services">Ground Shipping</a></li>
+        <li><a href="index.html#services">Air Delivery</a></li>
+        <li><a href="index.html#services">Sea Delivery</a></li>
+        <li><a href="index.html#services">Warehousing</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Head Office</h4>
+      <div class="footer-contact-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span>1180 Harbor Freight Way, Suite 400, Newark, NJ 07114, USA</span>
+      </div>
+      <div class="footer-contact-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.8 2.1z"/></svg>
+        <span>+1 (908) 555-0148</span>
+      </div>
+      <div class="footer-contact-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="m4 4 8 8 8-8"/></svg>
+        <span>dispatch@globalnetworktransit.com</span>
+      </div>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <span>&copy; 2026 Global Network Transit. All rights reserved.</span>
+    <div class="footer-social">
+      <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+      <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
+      <a href="#" aria-label="X / Twitter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l16 16M20 4 4 20"/></svg></a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="js/tracking.js"></script>
+
+</body>
+</html>
