@@ -244,14 +244,4 @@
     });
   });
 
-  document.getElementById('generateForm').addEventListener('submit', function(e){
-    e.preventDefault();
-    const destText = document.getElementById('destInput').value.trim();
-    if(!destText) return;
-    const shipment = buildShipment(destText, {});
-    shipments[shipment.id] = shipment;
-    document.getElementById('trackId').value = shipment.id;
-    renderResults(shipment);
-  });
-
 })();

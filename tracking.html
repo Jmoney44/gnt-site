@@ -13,7 +13,7 @@
 <header class="site-header">
   <div class="wrap header-inner">
     <a href="index.html" class="brand">
-      <span class="brand-mark"><img src="assets/logo.svg" alt="Global Network Transit logo" class="brand-logo"></span>
+      <span class="brand-mark"><img src="images/logo.png" alt="Global Network Transit logo"></span>
       <span>Global Network<br><small>TRANSIT &middot; GNT-LOGISTICS</small></span>
     </a>
     <nav class="main-nav" aria-label="Primary">
@@ -36,54 +36,29 @@
 <div class="wrap">
   <div class="track-panel">
 
-    <div style="display:grid; grid-template-columns:1fr; gap:28px;">
-
-      <!-- Track existing ID -->
-      <form id="trackForm">
-        <span class="eyebrow" style="margin-bottom:12px;">Have a tracking ID?</span>
-        <div class="track-form-row" style="margin-top:12px;">
-          <div class="field">
-            <label for="trackId">Tracking ID</label>
-            <input id="trackId" type="text" placeholder="e.g. GNT-4471928-CN" autocomplete="off">
-          </div>
-          <button type="submit" class="btn btn-signal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-            Track Shipment
-          </button>
+    <!-- Track existing ID -->
+    <form id="trackForm">
+      <span class="eyebrow" style="margin-bottom:12px;">Have a tracking ID?</span>
+      <div class="track-form-row" style="margin-top:12px;">
+        <div class="field">
+          <label for="trackId">Tracking ID</label>
+          <input id="trackId" type="text" placeholder="e.g. GNT-4471928-CN" autocomplete="off">
         </div>
-        <p class="track-sample">Try a live demo ID:
-          <button type="button" data-demo="GNT-4471928-CN">GNT-4471928-CN</button> &middot;
-          <button type="button" data-demo="GNT-8802341-CN">GNT-8802341-CN</button>
-        </p>
-        <div class="track-error" id="trackError">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/></svg>
-          <span>We couldn't find that tracking ID. Double-check it, or generate a demo shipment below.</span>
-        </div>
-      </form>
+        <button type="submit" class="btn btn-signal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          Track Shipment
+        </button>
+      </div>
+      <p class="track-sample">Try a live demo ID:
+        <button type="button" data-demo="GNT-4471928-CN">GNT-4471928-CN</button> &middot;
+        <button type="button" data-demo="GNT-8802341-CN">GNT-8802341-CN</button>
+      </p>
+      <div class="track-error" id="trackError">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/></svg>
+        <span>We couldn't find that tracking ID. Double-check it and try again.</span>
+      </div>
+    </form>
 
-      <div style="border-top:1px dashed var(--line);"></div>
-
-      <!-- Generate a demo shipment -->
-      <form id="generateForm">
-        <span class="eyebrow" style="margin-bottom:12px;">Don't have an ID yet?</span>
-        <p style="font-size:13.5px; color:#6B7686; margin:10px 0 14px; max-width:640px;">
-          Generate a sample shipment picked up from one of our China origin hubs to any destination address.
-          This creates a placeholder tracking record for demo purposes, pickup and destination logic can be
-          connected to real carrier data later.
-        </p>
-        <div class="track-form-row">
-          <div class="field">
-            <label for="destInput">Delivery address (city, region, or country)</label>
-            <input id="destInput" type="text" placeholder="e.g. Austin, Texas, USA" autocomplete="off" required>
-          </div>
-          <button type="submit" class="btn btn-navy">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            Generate Tracking ID
-          </button>
-        </div>
-      </form>
-
-    </div>
   </div>
 </div>
 
@@ -138,10 +113,10 @@
   <div class="wrap footer-grid">
     <div class="footer-brand">
       <a href="index.html" class="brand" style="color:white;">
-        <span class="brand-mark"><img src="assets/logo.svg" alt="Global Network Transit logo" class="brand-logo"></span>
+        <span class="brand-mark"><img src="images/logo.png" alt="Global Network Transit logo"></span>
         <span>Global Network<br><small>TRANSIT &middot; GNT-LOGISTICS</small></span>
       </a>
-      <p>We move freight by air, sea, and ground, with one manifest number and full visibility from pickup to final mile.</p>
+      <p>We move freight by air, sea, and ground — with one manifest number and full visibility from pickup to final mile.</p>
     </div>
     <div>
       <h4>Sitemap</h4>
@@ -158,7 +133,6 @@
         <li><a href="index.html#services">Ground Shipping</a></li>
         <li><a href="index.html#services">Air Delivery</a></li>
         <li><a href="index.html#services">Sea Delivery</a></li>
-        <li><a href="index.html#services">Warehousing</a></li>
       </ul>
     </div>
     <div>
@@ -184,6 +158,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="js/tracking.js"></script>
+<script src="js/chat-widget.js"></script>
 
 </body>
 </html>
