@@ -19,7 +19,7 @@
       Paste that URL below as SHEET_CSV_URL.
    ========================================================================== */
 
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2EXmnDX0b84AP0e54WUUhpKSZPb8tHErtA3sF1wIYdcQhTVELVWv1tcejRsre4NW5NeXE2MymydVr/pub?gid=1479524864&single=true&output=csv";
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2EXmnDX0b84AP0e54WUUhpKSZPb8tHErtA3sF1wIYdcQhTVELVWv1tcejRsre4NW5NeXE2MymydVr/pubhtml?gid=1479524864&single=true";
 
 (function(){
 
