@@ -97,12 +97,19 @@ const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2EXmnDX
         header: true,
         skipEmptyLines: true,
         complete: function(results){
+          if(results.errors && results.errors.length){
+            console.warn("GNT tracking: CSV parsed with warnings:", results.errors);
+          }
+          console.log("GNT tracking: rows loaded from sheet:", results.data.length, results.data);
           const match = results.data.find(r =>
             (r.TrackingNumber || "").trim().toLowerCase() === trackingId.trim().toLowerCase()
           );
           resolve(match ? rowToShipment(match) : null);
         },
-        error: function(err){ reject(err); }
+        error: function(err){
+          console.error("GNT tracking: failed to fetch/parse sheet CSV:", err);
+          reject(err);
+        }
       });
     });
   }
@@ -110,7 +117,10 @@ const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2EXmnDX
   function findShipment(trackingId){
     const id = trackingId.trim().toUpperCase();
     if(DEMO_SHIPMENTS[id]) return Promise.resolve(DEMO_SHIPMENTS[id]);
-    return fetchFromSheet(trackingId).catch(() => null);
+    return fetchFromSheet(trackingId).catch(err => {
+      console.error("GNT tracking: sheet lookup failed for", trackingId, "—", err);
+      return null;
+    });
   }
 
   function fmtDate(str){
