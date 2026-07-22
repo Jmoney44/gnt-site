@@ -445,7 +445,7 @@ input,select,textarea{ font-family:inherit; font-size:inherit; }
 .track-results.show{ display:block; }
 
 .track-summary{
-  display:grid; grid-template-columns:repeat(4,1fr); gap:2px;
+  display:grid; grid-template-columns:repeat(5,1fr); gap:2px;
   background:var(--line); border:1px solid var(--line); margin-bottom:40px;
 }
 .summary-cell{ background:var(--white); padding:22px 24px; }
@@ -456,6 +456,29 @@ input,select,textarea{ font-family:inherit; font-size:inherit; }
 .summary-cell b{ font-size:17px; font-family:var(--font-body); font-weight:700; color:var(--navy-900); }
 .summary-cell b.status-live{ color:var(--signal-deep); }
 .summary-cell .mono{ font-family:var(--font-mono); font-size:15px; letter-spacing:0.02em; }
+
+.map-refresh-row{ display:flex; align-items:center; justify-content:space-between; margin-top:10px; gap:12px; }
+.map-refresh-row p{ font-size:12px; color:#7A8792; font-family:var(--font-mono); margin:0; }
+.btn-refresh{
+  display:inline-flex; align-items:center; gap:6px; background:none; border:1px solid var(--line);
+  color:var(--navy-800); font-size:12px; padding:7px 13px; border-radius:20px; flex-shrink:0;
+}
+.btn-refresh:hover{ border-color:var(--navy-700); }
+.btn-refresh svg{ width:13px; height:13px; }
+.btn-refresh.spinning svg{ animation:spin 0.8s linear infinite; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+.pulse-dot{
+  width:14px; height:14px; border-radius:50%; background:#1C8A5B; position:relative;
+}
+.pulse-dot::after{
+  content:''; position:absolute; inset:-6px; border-radius:50%; border:2px solid #1C8A5B;
+  animation:pulseRing 1.6s ease-out infinite;
+}
+@keyframes pulseRing{
+  0%{ transform:scale(0.6); opacity:0.9; }
+  100%{ transform:scale(1.6); opacity:0; }
+}
 
 .track-columns{ display:grid; grid-template-columns:1.1fr 1fr; gap:44px; align-items:start; }
 
@@ -560,6 +583,7 @@ input,select,textarea{ font-family:inherit; font-size:inherit; }
   .stat-block:nth-child(3){ border-left:none; }
   .hero-grid, .split, .contact-grid, .track-columns{ grid-template-columns:1fr; }
   .reason-img{ width:180px; height:130px; }
+  .track-summary{ grid-template-columns:repeat(3,1fr); }
 }
 @media (max-width:720px){
   .main-nav{ display:none; }

@@ -83,6 +83,63 @@
           <b id="sumOrigin">—</b>
         </div>
         <div class="summary-cell">
+          <span>Current Location</span>
+          <b id="sumCurrent">—</b>
+        </div>
+        <div class="summary-cell">
+          <span>Estimated Delivery</span>
+          <b id="sumEta">—</b>
+        </div>
+      </div>
+
+      <div class="track-columns">
+        <div>
+          <div class="map-wrap">
+            <div id="trackMap"></div>
+            <div class="map-legend">
+              <span><span class="dot" style="background:#FF5A1F;"></span>Origin</span>
+              <span><span class="dot" style="background:#1C8A5B;"></span>Current Location</span>
+              <span><span class="dot" style="background:#16395C;"></span>Destination</span>
+            </div>
+          </div>
+          <div class="map-refresh-row">
+            <p id="mapNote"></p>
+            <button type="button" class="btn-refresh" id="refreshBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.3M21 4v5h-5"/></svg>
+              Refresh Status
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <span class="eyebrow" style="margin-bottom:18px;">Shipment Progress</span>
+          <div class="stage-list" id="stageList" style="margin-top:18px;"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ RESULTS -->
+<section class="section" id="results">
+  <div class="wrap">
+    <div class="track-results" id="trackResults">
+
+      <div class="track-summary">
+        <div class="summary-cell">
+          <span>Tracking ID</span>
+          <b class="mono" id="sumId">—</b>
+        </div>
+        <div class="summary-cell">
+          <span>Status</span>
+          <b class="status-live" id="sumStatus">—</b>
+        </div>
+        <div class="summary-cell">
+          <span>Origin</span>
+          <b id="sumOrigin">—</b>
+        </div>
+        <div class="summary-cell">
           <span>Estimated Delivery</span>
           <b id="sumEta">—</b>
         </div>

@@ -1,157 +1,128 @@
 /* ==========================================================================
    GLOBAL NETWORK TRANSIT — tracking page logic
-   Demo-only: generates placeholder shipment records client-side.
-   No backend, no real carrier data. Swap generateShipment() for a real
-   API call when ready.
+   Live shipment data comes from a published Google Sheet (CSV export).
+   Staff update a row in the sheet (status + current location); this page
+   re-fetches that row and reflects it — status, timeline, and map pin.
+
+   ---------------------------------------------------------------- SETUP ---
+   1. Create a Google Sheet with this exact header row (case-sensitive):
+        TrackingNumber | Reference | ServiceType | Status | Destination |
+        DestLat | DestLng | OriginLabel | OriginLat | OriginLng |
+        CurrentLabel | CurrentLat | CurrentLng | EstimatedDelivery |
+        LastUpdated | Note
+
+   2. Status must be exactly one of (case-insensitive):
+        Picked Up | Departed Origin Hub | In Transit |
+        Arrived Destination Country | Out For Delivery | Delivered
+
+   3. File → Share → Publish to web → select the sheet → CSV → Publish.
+      Paste that URL below as SHEET_CSV_URL.
    ========================================================================== */
+
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1dN65wFqyqGLgAhrc-vMySZhAjEURrsMN1vQ5QiKYvI8/edit?usp=sharing";
 
 (function(){
 
-  // ---------------------------------------------------------------- data
-
-  // China origin hubs GNT picks up from.
-  const ORIGINS = [
-    { label: "Shenzhen, Guangdong, China", lat: 22.5431, lng: 114.0579 },
-    { label: "Guangzhou, Guangdong, China", lat: 23.1291, lng: 113.2644 },
-    { label: "Ningbo, Zhejiang, China",     lat: 29.8683, lng: 121.5440 },
-    { label: "Shanghai, China",             lat: 31.2304, lng: 121.4737 },
-    { label: "Yiwu, Zhejiang, China",       lat: 29.3060, lng: 120.0757 }
+  const STAGE_ORDER = [
+    { key:"picked_up",        title:"Picked Up",                   match:"picked up",                    desc:"Collected from the origin facility." },
+    { key:"departed",         title:"Departed Origin Hub",         match:"departed origin hub",           desc:"Cleared origin customs and departed." },
+    { key:"in_transit",       title:"In Transit",                  match:"in transit",                    desc:"Moving toward the destination country." },
+    { key:"arrived",          title:"Arrived Destination Country", match:"arrived destination country",   desc:"Cleared destination customs and entered local network." },
+    { key:"out_for_delivery", title:"Out for Delivery",            match:"out for delivery",              desc:"Loaded onto final-mile vehicle for delivery." },
+    { key:"delivered",        title:"Delivered",                   match:"delivered",                     desc:"Delivered to the recipient." }
   ];
 
-  // Small curated lookup so a typed address can be placed on the map
-  // without needing a live geocoding API. Matched by substring, case-insensitive.
-  // "for now on any region" — extend this list as real regions are needed.
-  const CITY_LOOKUP = [
-    { keys:["new york","nyc"], label:"New York, NY, USA", lat:40.7128, lng:-74.0060 },
-    { keys:["los angeles","la, ca"], label:"Los Angeles, CA, USA", lat:34.0522, lng:-118.2437 },
-    { keys:["chicago"], label:"Chicago, IL, USA", lat:41.8781, lng:-87.6298 },
-    { keys:["houston"], label:"Houston, TX, USA", lat:29.7604, lng:-95.3698 },
-    { keys:["austin"], label:"Austin, TX, USA", lat:30.2672, lng:-97.7431 },
-    { keys:["dallas"], label:"Dallas, TX, USA", lat:32.7767, lng:-96.7970 },
-    { keys:["miami"], label:"Miami, FL, USA", lat:25.7617, lng:-80.1918 },
-    { keys:["newark","new jersey", "nj"], label:"Newark, NJ, USA", lat:40.7357, lng:-74.1724 },
-    { keys:["seattle"], label:"Seattle, WA, USA", lat:47.6062, lng:-122.3321 },
-    { keys:["san francisco","bay area"], label:"San Francisco, CA, USA", lat:37.7749, lng:-122.4194 },
-    { keys:["toronto"], label:"Toronto, ON, Canada", lat:43.6532, lng:-79.3832 },
-    { keys:["vancouver"], label:"Vancouver, BC, Canada", lat:49.2827, lng:-123.1207 },
-    { keys:["mexico city"], label:"Mexico City, Mexico", lat:19.4326, lng:-99.1332 },
-    { keys:["london","uk","united kingdom"], label:"London, United Kingdom", lat:51.5072, lng:-0.1276 },
-    { keys:["manchester"], label:"Manchester, United Kingdom", lat:53.4808, lng:-2.2426 },
-    { keys:["paris","france"], label:"Paris, France", lat:48.8566, lng:2.3522 },
-    { keys:["berlin","germany"], label:"Berlin, Germany", lat:52.5200, lng:13.4050 },
-    { keys:["madrid","spain"], label:"Madrid, Spain", lat:40.4168, lng:-3.7038 },
-    { keys:["rome","italy"], label:"Rome, Italy", lat:41.9028, lng:12.4964 },
-    { keys:["amsterdam","netherlands"], label:"Amsterdam, Netherlands", lat:52.3676, lng:4.9041 },
-    { keys:["dublin","ireland"], label:"Dublin, Ireland", lat:53.3498, lng:-6.2603 },
-    { keys:["lagos"], label:"Lagos, Nigeria", lat:6.5244, lng:3.3792 },
-    { keys:["nairobi","kenya"], label:"Nairobi, Kenya", lat:-1.2921, lng:36.8219 },
-    { keys:["johannesburg","south africa"], label:"Johannesburg, South Africa", lat:-26.2041, lng:28.0473 },
-    { keys:["cairo","egypt"], label:"Cairo, Egypt", lat:30.0444, lng:31.2357 },
-    { keys:["dubai","uae"], label:"Dubai, United Arab Emirates", lat:25.2048, lng:55.2708 },
-    { keys:["riyadh","saudi"], label:"Riyadh, Saudi Arabia", lat:24.7136, lng:46.6753 },
-    { keys:["mumbai"], label:"Mumbai, India", lat:19.0760, lng:72.8777 },
-    { keys:["delhi"], label:"New Delhi, India", lat:28.6139, lng:77.2090 },
-    { keys:["singapore"], label:"Singapore", lat:1.3521, lng:103.8198 },
-    { keys:["kuala lumpur","malaysia"], label:"Kuala Lumpur, Malaysia", lat:3.1390, lng:101.6869 },
-    { keys:["bangkok","thailand"], label:"Bangkok, Thailand", lat:13.7563, lng:100.5018 },
-    { keys:["jakarta","indonesia"], label:"Jakarta, Indonesia", lat:-6.2088, lng:106.8456 },
-    { keys:["manila","philippines"], label:"Manila, Philippines", lat:14.5995, lng:120.9842 },
-    { keys:["tokyo","japan"], label:"Tokyo, Japan", lat:35.6762, lng:139.6503 },
-    { keys:["seoul","korea"], label:"Seoul, South Korea", lat:37.5665, lng:126.9780 },
-    { keys:["sydney"], label:"Sydney, Australia", lat:-33.8688, lng:151.2093 },
-    { keys:["melbourne"], label:"Melbourne, Australia", lat:-37.8136, lng:144.9631 },
-    { keys:["auckland","new zealand"], label:"Auckland, New Zealand", lat:-36.8509, lng:174.7645 },
-    { keys:["sao paulo","brazil"], label:"São Paulo, Brazil", lat:-23.5505, lng:-46.6333 },
-    { keys:["buenos aires","argentina"], label:"Buenos Aires, Argentina", lat:-34.6037, lng:-58.3816 },
-    { keys:["bogota","colombia"], label:"Bogotá, Colombia", lat:4.7110, lng:-74.0721 },
-    { keys:["lima","peru"], label:"Lima, Peru", lat:-12.0464, lng:-77.0428 }
-  ];
-
-  const DEFAULT_DEST = { label:"destination address on file", lat:39.8283, lng:-98.5795, approximate:true };
-
-  // Pre-seeded demo shipments so the "track existing ID" flow works immediately.
-  const shipments = {
-    "GNT-4471928-CN": buildShipment("Los Angeles, CA, USA", { daysAgo: 6, stageIndex: 3 }),
-    "GNT-8802341-CN": buildShipment("London, United Kingdom", { daysAgo: 2, stageIndex: 1 })
+  // Local fallback demo shipments — work even before the Google Sheet is
+  // connected, so the page never looks broken during setup.
+  const DEMO_SHIPMENTS = {
+    "GNT-4471928-CN": {
+      id:"GNT-4471928-CN", reference:"DEMO-REF-001", serviceType:"Air Freight",
+      status:"In Transit",
+      origin:{ label:"Shenzhen, Guangdong, China", lat:22.5431, lng:114.0579 },
+      current:{ label:"Dubai International Hub, UAE", lat:25.2532, lng:55.3657 },
+      destination:{ label:"Los Angeles, CA, USA", lat:34.0522, lng:-118.2437 },
+      eta:"2026-07-30", lastUpdated:"2026-07-20", note:""
+    },
+    "GNT-8802341-CN": {
+      id:"GNT-8802341-CN", reference:"DEMO-REF-002", serviceType:"Sea Freight",
+      status:"Out For Delivery",
+      origin:{ label:"Ningbo, Zhejiang, China", lat:29.8683, lng:121.5440 },
+      current:{ label:"London Local Delivery Hub, UK", lat:51.4700, lng:-0.1200 },
+      destination:{ label:"London, United Kingdom", lat:51.5072, lng:-0.1276 },
+      eta:"2026-07-24", lastUpdated:"2026-07-21", note:""
+    }
   };
+
+  let lastLookupId = null;
+  let autoRefreshTimer = null;
 
   // ---------------------------------------------------------------- helpers
 
-  function findDestination(text){
-    const q = (text || "").toLowerCase().trim();
-    for(const c of CITY_LOOKUP){
-      if(c.keys.some(k => q.includes(k))){
-        return { label: text.trim() || c.label, lat: c.lat, lng: c.lng, matchedLabel: c.label, approximate: false };
-      }
-    }
-    return { label: text.trim() || DEFAULT_DEST.label, lat: DEFAULT_DEST.lat, lng: DEFAULT_DEST.lng, approximate: true };
+  function stageIndexFor(statusText){
+    const q = (statusText || "").trim().toLowerCase();
+    const idx = STAGE_ORDER.findIndex(s => s.match === q);
+    return idx === -1 ? 0 : idx;
   }
 
-  function generateTrackingId(){
-    let id;
-    do {
-      const digits = Math.floor(1000000 + Math.random()*8999999);
-      id = `GNT-${digits}-CN`;
-    } while (shipments[id]);
-    return id;
+  function num(v){
+    const n = parseFloat(v);
+    return isNaN(n) ? null : n;
   }
 
-  function fmtDate(d){
-    return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-  }
-
-  function addDays(base, days){
-    const d = new Date(base);
-    d.setDate(d.getDate() + days);
-    return d;
-  }
-
-  // Builds a full shipment record: origin, destination, tracking id, and a
-  // stage timeline. `opts.stageIndex` controls how far along the shipment is;
-  // if omitted, one is picked at random so demo shipments feel alive.
-  function buildShipment(destText, opts){
-    opts = opts || {};
-    const origin = ORIGINS[Math.floor(Math.random()*ORIGINS.length)];
-    const destination = findDestination(destText);
-    const mode = Math.random() > 0.5 ? "Air Freight" : "Sea Freight";
-    const totalTransitDays = mode === "Air Freight" ? 6 : 21;
-
-    const pickupDate = addDays(new Date(), -(opts.daysAgo ?? Math.floor(Math.random()*5)+1));
-
-    const stageDefs = [
-      { key:"picked_up",  title:"Picked Up",              desc:`Collected from origin facility in ${origin.label}.` },
-      { key:"departed",   title:"Departed Origin Hub",    desc:`Cleared origin customs and departed via ${mode.toLowerCase()}.` },
-      { key:"in_transit", title:"In Transit",              desc:`Moving via ${mode.toLowerCase()} toward destination country.` },
-      { key:"arrived",    title:"Arrived Destination Country", desc:"Cleared destination customs and entered local network." },
-      { key:"out_for_delivery", title:"Out for Delivery",  desc:"Loaded onto final-mile vehicle for delivery." },
-      { key:"delivered",  title:"Delivered",               desc:`Delivered to ${destination.label}.` }
-    ];
-
-    const stageIndex = opts.stageIndex !== undefined
-      ? opts.stageIndex
-      : Math.min(4, Math.floor(Math.random()*5)); // rarely auto-generate as fully delivered
-
-    const gapDays = totalTransitDays / (stageDefs.length - 1);
-    const stages = stageDefs.map((s, i) => ({
-      ...s,
-      date: addDays(pickupDate, Math.round(gapDays * i)),
-      status: i < stageIndex ? "done" : (i === stageIndex ? "current" : "pending")
-    }));
-
-    const eta = addDays(pickupDate, totalTransitDays);
-    const isDelivered = stageIndex >= stageDefs.length - 1;
-
+  function rowToShipment(row){
+    const origin = { label: row.OriginLabel || "Origin facility", lat: num(row.OriginLat), lng: num(row.OriginLng) };
+    const current = { label: row.CurrentLabel || row.OriginLabel || "In transit", lat: num(row.CurrentLat) ?? origin.lat, lng: num(row.CurrentLng) ?? origin.lng };
+    const destination = { label: row.Destination || "Destination address", lat: num(row.DestLat), lng: num(row.DestLng) };
     return {
-      id: opts.id || generateTrackingId(),
-      origin, destination, mode,
-      pickupDate, eta, stages,
-      status: isDelivered ? "Delivered" : stages[stageIndex].title
+      id: (row.TrackingNumber || "").trim(),
+      reference: row.Reference || "",
+      serviceType: row.ServiceType || "",
+      status: row.Status || "Picked Up",
+      origin, current, destination,
+      eta: row.EstimatedDelivery || "",
+      lastUpdated: row.LastUpdated || "",
+      note: row.Note || ""
     };
+  }
+
+  // Fetches the sheet and returns the matching row, or null.
+  function fetchFromSheet(trackingId){
+    return new Promise((resolve, reject) => {
+      if(!SHEET_CSV_URL || SHEET_CSV_URL.indexOf("PASTE_YOUR") === 0){
+        reject(new Error("Sheet not configured yet"));
+        return;
+      }
+      Papa.parse(SHEET_CSV_URL, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results){
+          const match = results.data.find(r =>
+            (r.TrackingNumber || "").trim().toLowerCase() === trackingId.trim().toLowerCase()
+          );
+          resolve(match ? rowToShipment(match) : null);
+        },
+        error: function(err){ reject(err); }
+      });
+    });
+  }
+
+  function findShipment(trackingId){
+    const id = trackingId.trim().toUpperCase();
+    if(DEMO_SHIPMENTS[id]) return Promise.resolve(DEMO_SHIPMENTS[id]);
+    return fetchFromSheet(trackingId).catch(() => null);
+  }
+
+  function fmtDate(str){
+    if(!str) return "—";
+    const d = new Date(str);
+    if(isNaN(d.getTime())) return str;
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
   }
 
   // ---------------------------------------------------------------- map
 
-  let map, originMarker, destMarker, routeLine;
+  let map, originMarker, currentMarker, destMarker, traveledLine, remainingLine;
 
   function ensureMap(){
     if(map) return;
@@ -162,37 +133,69 @@
     }).addTo(map);
   }
 
-  function iconFor(color){
+  function iconFor(color, pulse){
+    if(pulse){
+      return L.divIcon({
+        className: '',
+        html: `<div class="pulse-dot" style="background:${color};"></div>`,
+        iconSize: [14,14], iconAnchor: [7,7]
+      });
+    }
     return L.divIcon({
       className: '',
       html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 0 0 2px ${color};"></div>`,
-      iconSize: [16,16],
-      iconAnchor: [8,8]
+      iconSize: [16,16], iconAnchor: [8,8]
     });
   }
 
   function renderMap(shipment){
     ensureMap();
-    if(originMarker) map.removeLayer(originMarker);
-    if(destMarker) map.removeLayer(destMarker);
-    if(routeLine) map.removeLayer(routeLine);
+    [originMarker, currentMarker, destMarker, traveledLine, remainingLine].forEach(l => { if(l) map.removeLayer(l); });
 
-    originMarker = L.marker([shipment.origin.lat, shipment.origin.lng], { icon: iconFor('#FF5A1F') })
-      .addTo(map).bindPopup(`<b>Origin</b><br>${shipment.origin.label}`);
-    destMarker = L.marker([shipment.destination.lat, shipment.destination.lng], { icon: iconFor('#1C8A5B') })
-      .addTo(map).bindPopup(`<b>Destination</b><br>${shipment.destination.label}`);
+    const hasOrigin = shipment.origin.lat != null && shipment.origin.lng != null;
+    const hasCurrent = shipment.current.lat != null && shipment.current.lng != null;
+    const hasDest = shipment.destination.lat != null && shipment.destination.lng != null;
 
-    routeLine = L.polyline(
-      [[shipment.origin.lat, shipment.origin.lng], [shipment.destination.lat, shipment.destination.lng]],
-      { color:'#16395C', weight:3, dashArray:'6 8' }
-    ).addTo(map);
+    const bounds = [];
 
-    map.fitBounds(routeLine.getBounds(), { padding:[48,48] });
+    if(hasOrigin){
+      originMarker = L.marker([shipment.origin.lat, shipment.origin.lng], { icon: iconFor('#FF5A1F') })
+        .addTo(map).bindPopup(`<b>Origin</b><br>${shipment.origin.label}`);
+      bounds.push([shipment.origin.lat, shipment.origin.lng]);
+    }
+    if(hasCurrent){
+      currentMarker = L.marker([shipment.current.lat, shipment.current.lng], { icon: iconFor('#1C8A5B', true) })
+        .addTo(map).bindPopup(`<b>Current Location</b><br>${shipment.current.label}`);
+      bounds.push([shipment.current.lat, shipment.current.lng]);
+    }
+    if(hasDest){
+      destMarker = L.marker([shipment.destination.lat, shipment.destination.lng], { icon: iconFor('#16395C') })
+        .addTo(map).bindPopup(`<b>Destination</b><br>${shipment.destination.label}`);
+      bounds.push([shipment.destination.lat, shipment.destination.lng]);
+    }
 
-    const note = document.getElementById('mapNote');
-    note.textContent = shipment.destination.approximate
-      ? `Approximate pin — "${shipment.destination.label}" didn't match a known city, showing a placeholder location for this demo.`
-      : `Route shown is a straight demo line, not an actual carrier path.`;
+    if(hasOrigin && hasCurrent){
+      traveledLine = L.polyline(
+        [[shipment.origin.lat, shipment.origin.lng], [shipment.current.lat, shipment.current.lng]],
+        { color:'#1C8A5B', weight:3 }
+      ).addTo(map);
+    }
+    if(hasCurrent && hasDest){
+      remainingLine = L.polyline(
+        [[shipment.current.lat, shipment.current.lng], [shipment.destination.lat, shipment.destination.lng]],
+        { color:'#16395C', weight:3, dashArray:'6 8' }
+      ).addTo(map);
+    }
+
+    if(bounds.length > 1){
+      map.fitBounds(bounds, { padding:[48,48] });
+    } else if(bounds.length === 1){
+      map.setView(bounds[0], 5);
+    }
+
+    document.getElementById('mapNote').textContent = shipment.lastUpdated
+      ? `Last updated ${fmtDate(shipment.lastUpdated)}`
+      : '';
   }
 
   // ---------------------------------------------------------------- render
@@ -201,19 +204,22 @@
     document.getElementById('sumId').textContent = shipment.id;
     document.getElementById('sumStatus').textContent = shipment.status;
     document.getElementById('sumOrigin').textContent = shipment.origin.label;
+    document.getElementById('sumCurrent').textContent = shipment.current.label;
     document.getElementById('sumEta').textContent = fmtDate(shipment.eta);
 
+    const currentIdx = stageIndexFor(shipment.status);
     const list = document.getElementById('stageList');
     list.innerHTML = '';
-    shipment.stages.forEach(stage => {
+    STAGE_ORDER.forEach((stage, i) => {
+      const status = i < currentIdx ? 'done' : (i === currentIdx ? 'current' : 'pending');
       const el = document.createElement('div');
-      el.className = `stage ${stage.status === 'done' ? 'done' : ''} ${stage.status === 'current' ? 'current' : ''}`.trim();
+      el.className = `stage ${status === 'done' ? 'done' : ''} ${status === 'current' ? 'current' : ''}`.trim();
       el.innerHTML = `
         <div class="stage-top">
           <h4>${stage.title}</h4>
-          <time>${stage.status === 'pending' ? 'Pending' : fmtDate(stage.date)}</time>
+          <time>${status === 'pending' ? 'Pending' : ''}</time>
         </div>
-        <p>${stage.desc}</p>`;
+        <p>${stage.desc}${(i === currentIdx && shipment.note) ? ' — ' + shipment.note : ''}</p>`;
       list.appendChild(el);
     });
 
@@ -223,18 +229,44 @@
     document.getElementById('results').scrollIntoView({ behavior:'smooth', block:'start' });
   }
 
+  function showError(){
+    document.getElementById('trackError').classList.add('show');
+    document.getElementById('trackResults').classList.remove('show');
+  }
+
+  function lookupAndRender(id, isRefresh){
+    const refreshBtn = document.getElementById('refreshBtn');
+    if(isRefresh) refreshBtn.classList.add('spinning');
+    findShipment(id).then(shipment => {
+      if(isRefresh) refreshBtn.classList.remove('spinning');
+      if(shipment){
+        lastLookupId = id;
+        renderResults(shipment);
+      } else if(!isRefresh){
+        showError();
+      }
+    }).catch(() => {
+      if(isRefresh) refreshBtn.classList.remove('spinning');
+      if(!isRefresh) showError();
+    });
+  }
+
   // ---------------------------------------------------------------- events
 
   document.getElementById('trackForm').addEventListener('submit', function(e){
     e.preventDefault();
-    const id = document.getElementById('trackId').value.trim().toUpperCase();
-    const shipment = shipments[id];
-    if(shipment){
-      renderResults(shipment);
-    } else {
-      document.getElementById('trackError').classList.add('show');
-      document.getElementById('trackResults').classList.remove('show');
-    }
+    const id = document.getElementById('trackId').value.trim();
+    if(!id) return;
+    lookupAndRender(id, false);
+
+    if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+    autoRefreshTimer = setInterval(() => {
+      if(lastLookupId) lookupAndRender(lastLookupId, true);
+    }, 60000);
+  });
+
+  document.getElementById('refreshBtn').addEventListener('click', function(){
+    if(lastLookupId) lookupAndRender(lastLookupId, true);
   });
 
   document.querySelectorAll('[data-demo]').forEach(btn => {
