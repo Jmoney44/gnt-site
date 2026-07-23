@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Global Network Transit</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="image/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .admin-wrap{ max-width:1180px; margin:0 auto; padding:32px 28px 80px; }
+  .admin-topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:28px; flex-wrap:wrap; gap:14px;
+  }
+  .admin-topbar h1{ font-size:26px; margin:0; }
+  .admin-count{
+    font-family:var(--font-mono); font-size:12px; color:#7A8792;
+    letter-spacing:0.05em;
+  }
+  .gate{
+    max-width:380px; margin:120px auto; background:var(--white);
+    border:1px solid var(--line); border-radius:6px; padding:36px;
+    box-shadow:var(--shadow-soft);
+  }
+  .gate h2{ font-size:20px; margin-bottom:6px; }
+  .gate p{ font-size:13.5px; color:#7A8792; margin-bottom:20px; }
+  .gate input{
+    width:100%; border:1.5px solid var(--line); border-radius:3px;
+    padding:12px 14px; font-size:14.5px; margin-bottom:14px;
+  }
+  .gate .gate-error{ color:#B23A2E; font-size:13px; margin-bottom:12px; display:none; }
+  .gate .gate-error.show{ display:block; }
+
+  .ship-table{ width:100%; border-collapse:collapse; background:var(--white); }
+  .ship-table th{
+    text-align:left; font-family:var(--font-mono); font-size:11px;
+    letter-spacing:0.06em; text-transform:uppercase; color:#7A8792;
+    padding:10px 12px; border-bottom:2px solid var(--line); white-space:nowrap;
+  }
+  .ship-table td{
+    padding:10px 12px; border-bottom:1px solid var(--line); font-size:13.5px;
+    vertical-align:top;
+  }
+  .ship-table tr:hover td{ background:#FAFBFC; }
+  .ship-table .mono{ font-family:var(--font-mono); font-size:12.5px; }
+  .ship-table select, .ship-table input, .ship-table textarea{
+    border:1.5px solid var(--line); border-radius:3px; padding:7px 9px;
+    font-size:13px; width:100%; min-width:150px;
+  }
+  .ship-table textarea{ min-height:38px; resize:vertical; }
+  .row-save{
+    background:var(--signal); color:var(--white); border:none; border-radius:3px;
+    padding:8px 14px; font-family:var(--font-mono); font-size:11.5px;
+    font-weight:600; letter-spacing:0.05em; text-transform:uppercase; white-space:nowrap;
+  }
+  .row-save:hover{ background:var(--signal-deep); }
+  .row-save.saved{ background:var(--ok); }
+  .row-save:disabled{ opacity:0.5; }
+  .table-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:6px; }
+  .empty-state{ text-align:center; padding:60px 20px; color:#7A8792; }
+  .refresh-row{ display:flex; gap:10px; }
+  .refresh-row .btn{ padding:10px 18px; font-size:12px; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark"><img src="image/logo.png" alt="Global Network Transit logo"></span>
+      <span>Global Network TRANSIT<br><small>GNT-LOGISTICS</small></span>
+    </a>
+    <nav class="main-nav" aria-label="Primary">
+      <a href="index.html">Home &amp; Services</a>
+      <a href="about-contact.html">About &amp; Contact</a>
+      <a href="tracking.html" class="nav-cta">Track Shipment</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ---------------------------------------------------------------- PASSWORD GATE -->
+<div class="gate" id="gate">
+  <h2>Admin Access</h2>
+  <p>Enter the dispatch password to manage shipments.</p>
+  <input type="password" id="gatePassword" placeholder="Password" autocomplete="off">
+  <p class="gate-error" id="gateError">Incorrect password, or the connection failed. Try again.</p>
+  <button class="btn btn-signal" id="gateSubmit" style="width:100%; justify-content:center;">Enter Dashboard</button>
+</div>
+
+<!-- ---------------------------------------------------------------- DASHBOARD -->
+<div class="admin-wrap" id="dashboard" style="display:none;">
+  <div class="admin-topbar">
+    <div>
+      <h1>Shipment Dashboard</h1>
+      <span class="admin-count" id="shipCount">Loading…</span>
+    </div>
+    <div class="refresh-row">
+      <button class="btn btn-outline" style="color:var(--navy-900); border-color:var(--line);" id="refreshList">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 12a9 9 0 1 1-2.6-6.3M21 4v5h-5"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="ship-table" id="shipTable">
+      <thead>
+        <tr>
+          <th>Tracking #</th>
+          <th>Reference</th>
+          <th>Service</th>
+          <th>Route</th>
+          <th>Status</th>
+          <th>Current Location</th>
+          <th>ETA</th>
+          <th>Note</th>
+          <th>Updated</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="shipTableBody"></tbody>
+    </table>
+    <div class="empty-state" id="emptyState" style="display:none;">No shipments yet.</div>
+  </div>
+</div>
+
+<script>
+const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+const STATUS_OPTIONS = [
+  "Picked Up",
+  "Departed Origin Hub",
+  "In Transit",
+  "Arrived Destination Country",
+  "Out For Delivery",
+  "Delivered"
+];
+
+let adminPassword = "";
+
+function el(id){ return document.getElementById(id); }
+
+el('gateSubmit').addEventListener('click', tryLogin);
+el('gatePassword').addEventListener('keydown', e => { if(e.key === 'Enter') tryLogin(); });
+
+function tryLogin(){
+  const pw = el('gatePassword').value.trim();
+  if(!pw) return;
+  el('gateSubmit').disabled = true;
+  el('gateError').classList.remove('show');
+
+  fetch(APPS_SCRIPT_URL + '?action=list&password=' + encodeURIComponent(pw))
+    .then(res => res.json())
+    .then(data => {
+      el('gateSubmit').disabled = false;
+      if(data.success){
+        adminPassword = pw;
+        el('gate').style.display = 'none';
+        el('dashboard').style.display = 'block';
+        renderShipments(data.shipments);
+      } else {
+        el('gateError').classList.add('show');
+      }
+    })
+    .catch(() => {
+      el('gateSubmit').disabled = false;
+      el('gateError').classList.add('show');
+    });
+}
+
+function loadShipments(){
+  fetch(APPS_SCRIPT_URL + '?action=list&password=' + encodeURIComponent(adminPassword))
+    .then(res => res.json())
+    .then(data => {
+      if(data.success) renderShipments(data.shipments);
+    });
+}
+
+el('refreshList').addEventListener('click', loadShipments);
+
+function renderShipments(shipments){
+  const body = el('shipTableBody');
+  body.innerHTML = '';
+  el('shipCount').textContent = shipments.length + ' shipment' + (shipments.length === 1 ? '' : 's');
+  el('emptyState').style.display = shipments.length ? 'none' : 'block';
+
+  shipments.forEach(s => {
+    const tr = document.createElement('tr');
+    const statusOptionsHtml = STATUS_OPTIONS.map(opt =>
+      `<option value="${opt}" ${s.Status === opt ? 'selected' : ''}>${opt}</option>`
+    ).join('');
+
+    tr.innerHTML = `
+      <td class="mono">${s.TrackingNumber || ''}</td>
+      <td>${s.Reference || ''}</td>
+      <td>${s.ServiceType || ''}</td>
+      <td style="font-size:12.5px; color:#4A5A66;">${s.OriginLabel || '—'} → ${s.Destination || '—'}</td>
+      <td><select class="f-status">${statusOptionsHtml}</select></td>
+      <td><input class="f-current" type="text" value="${(s.CurrentLabel || '').replace(/"/g,'&quot;')}" placeholder="Current location"></td>
+      <td><input class="f-eta" type="date" value="${s.EstimatedDelivery || ''}" style="min-width:130px;"></td>
+      <td><textarea class="f-note" placeholder="Note shown on tracking page">${s.Note || ''}</textarea></td>
+      <td style="font-size:12px; color:#7A8792; white-space:nowrap;">${s.LastUpdated || '—'}</td>
+      <td><button class="row-save">Save</button></td>
+    `;
+
+    tr.querySelector('.row-save').addEventListener('click', function(){
+      saveRow(s.TrackingNumber, tr, this);
+    });
+
+    body.appendChild(tr);
+  });
+}
+
+function saveRow(trackingNumber, tr, btn){
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const payload = {
+    action: 'updateStatus',
+    password: adminPassword,
+    trackingNumber: trackingNumber,
+    status: tr.querySelector('.f-status').value,
+    currentLabel: tr.querySelector('.f-current').value,
+    eta: tr.querySelector('.f-eta').value,
+    note: tr.querySelector('.f-note').value
+  };
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  })
+    .then(res => res.json())
+    .then(data => {
+      btn.disabled = false;
+      if(data.success){
+        btn.textContent = 'Saved ✓';
+        btn.classList.add('saved');
+        setTimeout(() => { btn.textContent = 'Save'; btn.classList.remove('saved'); }, 1800);
+      } else {
+        btn.textContent = 'Failed — retry';
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.textContent = 'Failed — retry';
+    });
+}
+</script>
+
+</body>
+</html>
