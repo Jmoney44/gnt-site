@@ -59,6 +59,31 @@ function generateTrackingNumber_(sheet) {
   return id;
 }
 
+/* Looks up lat/lng for a free-text place name using Apps Script's built-in
+   geocoder. Returns {lat, lng} or null if it can't resolve the address. */
+function geocode_(address) {
+  if (!address) return null;
+  try {
+    const result = Maps.newGeocoder().geocode(address);
+    if (result && result.results && result.results.length > 0) {
+      const loc = result.results[0].geometry.location;
+      return { lat: loc.lat, lng: loc.lng };
+    }
+  } catch (err) {
+    // Geocoding quota/errors shouldn't block shipment creation — just skip.
+  }
+  return null;
+}
+
+/* Rough default ETA when the customer/admin doesn't set one, based on
+   service type. Adjust the day counts to match your real transit times. */
+function defaultEtaDays_(serviceType) {
+  const s = (serviceType || "").toLowerCase();
+  if (s.indexOf("air") !== -1) return 5;
+  if (s.indexOf("sea") !== -1) return 30;
+  return 10; // ground / default
+}
+
 /* ---- GET: single lookup (public) or full list (admin) ---- */
 function doGet(e) {
   const sheet = getSheet_();
@@ -126,21 +151,43 @@ function handleCreateShipment_(data) {
     const trackingNumber = generateTrackingNumber_(sheet);
     const today = Utilities.formatDate(new Date(), "GMT", "yyyy-MM-dd");
 
+    // Auto-geocode origin/destination from the text labels if coordinates
+    // weren't supplied directly.
+    let originLat = data.originLat, originLng = data.originLng;
+    if ((!originLat || !originLng) && data.originLabel) {
+      const g = geocode_(data.originLabel);
+      if (g) { originLat = g.lat; originLng = g.lng; }
+    }
+
+    let destLat = data.destLat, destLng = data.destLng;
+    if ((!destLat || !destLng) && data.destination) {
+      const g = geocode_(data.destination);
+      if (g) { destLat = g.lat; destLng = g.lng; }
+    }
+
+    // Auto ETA if none was given.
+    let eta = data.eta;
+    if (!eta) {
+      const etaDate = new Date();
+      etaDate.setDate(etaDate.getDate() + defaultEtaDays_(data.serviceType));
+      eta = Utilities.formatDate(etaDate, "GMT", "yyyy-MM-dd");
+    }
+
     const row = [
       trackingNumber,
       data.reference || "",
       data.serviceType || "",
       "Picked Up",
       data.destination || "",
-      data.destLat || "",
-      data.destLng || "",
+      destLat || "",
+      destLng || "",
       data.originLabel || "",
-      data.originLat || "",
-      data.originLng || "",
+      originLat || "",
+      originLng || "",
       data.originLabel || "",
-      data.originLat || "",
-      data.originLng || "",
-      data.eta || "",
+      originLat || "",
+      originLng || "",
+      eta,
       today,
       data.note || ""
     ];
@@ -179,11 +226,18 @@ function handleUpdateStatus_(data) {
         if (data.currentLabel !== undefined) {
           sheet.getRange(rowNum, colIndex["CurrentLabel"] + 1).setValue(data.currentLabel);
         }
-        if (data.currentLat !== undefined && data.currentLat !== "") {
-          sheet.getRange(rowNum, colIndex["CurrentLat"] + 1).setValue(data.currentLat);
+
+        let currentLat = data.currentLat;
+        let currentLng = data.currentLng;
+        if ((!currentLat || !currentLng) && data.currentLabel) {
+          const g = geocode_(data.currentLabel);
+          if (g) { currentLat = g.lat; currentLng = g.lng; }
         }
-        if (data.currentLng !== undefined && data.currentLng !== "") {
-          sheet.getRange(rowNum, colIndex["CurrentLng"] + 1).setValue(data.currentLng);
+        if (currentLat !== undefined && currentLat !== "") {
+          sheet.getRange(rowNum, colIndex["CurrentLat"] + 1).setValue(currentLat);
+        }
+        if (currentLng !== undefined && currentLng !== "") {
+          sheet.getRange(rowNum, colIndex["CurrentLng"] + 1).setValue(currentLng);
         }
         if (data.note !== undefined) {
           sheet.getRange(rowNum, colIndex["Note"] + 1).setValue(data.note);

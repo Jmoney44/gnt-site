@@ -126,21 +126,20 @@
   </div>
 
   <p style="font-size:12.5px; color:#7A8792; margin-top:14px; font-family:var(--font-mono);">
-    Tip: to find Lat/Lng for a location, search it on
-    <a href="https://www.google.com/maps" target="_blank" rel="noopener" style="color:var(--navy-700); text-decoration:underline;">Google Maps</a>,
-    right-click the pin, and click the coordinates to copy them (e.g. 25.2532, 55.3657 — first number is Lat, second is Lng).
-    Leave blank to keep the current coordinates unchanged.
+    Tip: Lat/Lng now fill in automatically from whatever you type in Current Location — leave them
+    blank and just update the location text. Only fill Lat/Lng manually if the auto-lookup gets a
+    place wrong or you want to pin an exact address.
   </p>
 </div>
 
 <script>
-const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8eZhZQkiNV3z8385RmWROwi0hkfZttrdu4eddNcivAaIPg9F3bzBL60fDjGeuABnlfg/exec";
 
 const STATUS_OPTIONS = [
   "Picked Up",
   "Departed Origin Hub",
   "In Transit",
-  "Arrived Destination Country",
+  "Package on Hold demanding for Clearance Fees",
   "Out For Delivery",
   "Delivered"
 ];

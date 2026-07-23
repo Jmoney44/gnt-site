@@ -10,7 +10,7 @@
       file) and paste the resulting URL below as APPS_SCRIPT_URL.
    2. Status in the sheet must be exactly one of (case-insensitive):
         Picked Up | Departed Origin Hub | In Transit |
-        Arrived Destination Country | Out For Delivery | Delivered
+        Package on Hold demanding for Clearance Fees | Out For Delivery | Delivered
    ========================================================================== */
 
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8eZhZQkiNV3z8385RmWROwi0hkfZttrdu4eddNcivAaIPg9F3bzBL60fDjGeuABnlfg/exec";
@@ -21,7 +21,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8eZhZQkiNV3z8
     { key:"picked_up",        title:"Picked Up",                   match:"picked up",                    desc:"Collected from the origin facility." },
     { key:"departed",         title:"Departed Origin Hub",         match:"departed origin hub",           desc:"Cleared origin customs and departed." },
     { key:"in_transit",       title:"In Transit",                  match:"in transit",                    desc:"Moving toward the destination country." },
-    { key:"arrived",          title:"Arrived Destination Country", match:"arrived destination country",   desc:"Cleared destination customs and entered local network." },
+    { key:"arrived",          title:"Package on Hold demanding for Clearance Fees", match:"package on hold demanding for clearance fees",   desc:"Cleared destination customs and entered local network." },
     { key:"out_for_delivery", title:"Out for Delivery",            match:"out for delivery",              desc:"Loaded onto final-mile vehicle for delivery." },
     { key:"delivered",        title:"Delivered",                   match:"delivered",                     desc:"Delivered to the recipient." }
   ];
