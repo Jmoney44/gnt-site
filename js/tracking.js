@@ -43,7 +43,7 @@ const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTaKPAwjk
       destination:{ label:"Los Angeles, CA, USA", lat:34.0522, lng:-118.2437 },
       eta:"2026-07-30", lastUpdated:"2026-07-20", note:""
     },
-    "GNT-8802341-CN": {
+    "GNT-0000001-CN": {
       id:"GNT-8802341-CN", reference:"DEMO-REF-002", serviceType:"Sea Freight",
       status:"Out For Delivery",
       origin:{ label:"Ningbo, Zhejiang, China", lat:29.8683, lng:121.5440 },
