@@ -1,19 +1,25 @@
 /* ==========================================================================
    GLOBAL NETWORK TRANSIT — tracking page logic
-   Live shipment data comes from a Google Apps Script Web App bound to the
-   "GNT Shipment Tracking" sheet (see Code.gs). Staff update a row's Status
-   cell directly in the sheet; this page fetches that row live — no cache
-   delay, unlike the old "publish to web" CSV approach.
+   Live shipment data comes from a published Google Sheet (CSV export).
+   Staff update a row in the sheet (status + current location); this page
+   re-fetches that row and reflects it — status, timeline, and map pin.
 
    ---------------------------------------------------------------- SETUP ---
-   1. Deploy Code.gs as a Web App (see instructions at the top of that
-      file) and paste the resulting URL below as APPS_SCRIPT_URL.
-   2. Status in the sheet must be exactly one of (case-insensitive):
+   1. Create a Google Sheet with this exact header row (case-sensitive):
+        TrackingNumber | Reference | ServiceType | Status | Destination |
+        DestLat | DestLng | OriginLabel | OriginLat | OriginLng |
+        CurrentLabel | CurrentLat | CurrentLng | EstimatedDelivery |
+        LastUpdated | Note
+
+   2. Status must be exactly one of (case-insensitive):
         Picked Up | Departed Origin Hub | In Transit |
         Arrived Destination Country | Out For Delivery | Delivered
+
+   3. File → Share → Publish to web → select the sheet → CSV → Publish.
+      Paste that URL below as SHEET_CSV_URL.
    ========================================================================== */
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8eZhZQkiNV3z8385RmWROwi0hkfZttrdu4eddNcivAaIPg9F3bzBL60fDjGeuABnlfg/exec";
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTaKPAwjkfkEbbTyqS5jwQhq9VrBH59aGjoJNemMqDxUYe131Va0zi4FDBLM_KxeUeMtC_pu7doH7GN/pub?output=csv";
 
 (function(){
 
@@ -26,8 +32,8 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8eZhZQkiNV3z8
     { key:"delivered",        title:"Delivered",                   match:"delivered",                     desc:"Delivered to the recipient." }
   ];
 
-  // Local fallback demo shipments — work even before Apps Script is deployed,
-  // so the page never looks broken during setup, and so sales demos always work.
+  // Local fallback demo shipments — work even before the Google Sheet is
+  // connected, so the page never looks broken during setup.
   const DEMO_SHIPMENTS = {
     "GNT-4471928-CN": {
       id:"GNT-4471928-CN", reference:"DEMO-REF-001", serviceType:"Air Freight",
@@ -79,25 +85,40 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8eZhZQkiNV3z8
     };
   }
 
-  // Fetches the live row for one tracking ID from the Apps Script endpoint.
-  function fetchFromAppsScript(trackingId){
-    if(!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("PASTE_YOUR") === 0){
-      return Promise.reject(new Error("Apps Script URL not configured yet"));
-    }
-    const url = APPS_SCRIPT_URL + "?id=" + encodeURIComponent(trackingId.trim());
-    return fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        if(!data.success) return null;
-        return rowToShipment(data.shipment);
+  // Fetches the sheet and returns the matching row, or null.
+  function fetchFromSheet(trackingId){
+    return new Promise((resolve, reject) => {
+      if(!SHEET_CSV_URL || SHEET_CSV_URL.indexOf("PASTE_YOUR") === 0){
+        reject(new Error("Sheet not configured yet"));
+        return;
+      }
+      Papa.parse(SHEET_CSV_URL, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results){
+          if(results.errors && results.errors.length){
+            console.warn("GNT tracking: CSV parsed with warnings:", results.errors);
+          }
+          console.log("GNT tracking: rows loaded from sheet:", results.data.length, results.data);
+          const match = results.data.find(r =>
+            (r.TrackingNumber || "").trim().toLowerCase() === trackingId.trim().toLowerCase()
+          );
+          resolve(match ? rowToShipment(match) : null);
+        },
+        error: function(err){
+          console.error("GNT tracking: failed to fetch/parse sheet CSV:", err);
+          reject(err);
+        }
       });
+    });
   }
 
   function findShipment(trackingId){
     const id = trackingId.trim().toUpperCase();
     if(DEMO_SHIPMENTS[id]) return Promise.resolve(DEMO_SHIPMENTS[id]);
-    return fetchFromAppsScript(trackingId).catch(err => {
-      console.error("GNT tracking: lookup failed for", trackingId, "—", err);
+    return fetchFromSheet(trackingId).catch(err => {
+      console.error("GNT tracking: sheet lookup failed for", trackingId, "—", err);
       return null;
     });
   }
@@ -264,14 +285,5 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8eZhZQkiNV3z8
       document.getElementById('trackForm').requestSubmit();
     });
   });
-
-  // If the page loads with ?id=GNT-xxxx-CN in the URL (e.g. linked from the
-  // shipment request confirmation), auto-fill and look it up.
-  const params = new URLSearchParams(window.location.search);
-  const prefillId = params.get('id');
-  if(prefillId){
-    document.getElementById('trackId').value = prefillId;
-    document.getElementById('trackForm').requestSubmit();
-  }
 
 })();

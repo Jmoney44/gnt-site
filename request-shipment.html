@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Request a Shipment — Global Network Transit</title>
+<meta name="description" content="Submit shipment details and receive a Global Network Transit tracking number instantly.">
+
+<link rel="icon" type="image/png" href="image/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark"><img src="image/logo.png" alt="Global Network Transit logo"></span>
+      <span>Global Network TRANSIT<br><small>GNT-LOGISTICS</small></span>
+    </a>
+    <nav class="main-nav" aria-label="Primary">
+      <a href="index.html">Home &amp; Services</a>
+      <a href="about-contact.html">About &amp; Contact</a>
+      <a href="request-shipment.html" class="is-active">Request Shipment</a>
+      <a href="tracking.html" class="nav-cta">Track Shipment</a>
+    </nav>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="wrap">
+    <span class="eyebrow hero-eyebrow">New Shipment</span>
+    <h1>Tell us what's moving.<br>We'll issue the tracking ID.</h1>
+    <p class="breadcrumb"><a href="index.html">Home</a> <span>/</span> Request a Shipment</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap" style="max-width:720px;">
+
+    <div class="form-card">
+      <h3 style="font-size:22px; margin-bottom:6px;">Shipment Details</h3>
+      <p style="font-size:14px; color:#7A8792; margin-bottom:22px;">Fields marked with an asterisk are required. You'll get a tracking number the moment you submit — save it or bookmark the tracking link we show you.</p>
+
+      <form id="shipmentForm" novalidate>
+        <div class="field-row">
+          <div class="field"><label for="sname">Full name *</label><input id="sname" name="sname" type="text" required></div>
+          <div class="field"><label for="scompany">Company</label><input id="scompany" name="scompany" type="text"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="semail">Email *</label><input id="semail" name="semail" type="email" required></div>
+          <div class="field"><label for="sphone">Phone</label><input id="sphone" name="sphone" type="tel"></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="sservice">Service *</label>
+            <select id="sservice" name="sservice" required>
+              <option value="Ground Shipping">Ground Shipping</option>
+              <option value="Air Freight">Air Delivery</option>
+              <option value="Sea Freight">Sea Delivery</option>
+            </select>
+          </div>
+          <div class="field"><label for="seta">Estimated delivery date</label><input id="seta" name="seta" type="date"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="sorigin">Origin (pickup location) *</label><input id="sorigin" name="sorigin" type="text" required placeholder="e.g. Shenzhen, Guangdong, China"></div>
+          <div class="field"><label for="sdest">Destination *</label><input id="sdest" name="sdest" type="text" required placeholder="e.g. Newark, NJ, USA"></div>
+        </div>
+        <div class="field">
+          <label for="snote">Cargo details / notes</label>
+          <textarea id="snote" name="snote" placeholder="Cargo type, approximate volume, special handling..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-signal" id="submitBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
+          Submit &amp; Get Tracking Number
+        </button>
+
+        <p class="form-note" id="formNote">Submitting creates a row in our dispatch system with status "Picked Up". A team member will update it as the shipment moves.</p>
+
+        <div class="form-success" id="formSuccess" style="flex-direction:column; align-items:flex-start; gap:10px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10-3-3"/></svg>
+            <span>Your tracking number has been issued:</span>
+          </div>
+          <b class="mono" id="issuedId" style="font-size:20px; color:var(--navy-900);">—</b>
+          <a href="#" id="trackNowLink" class="btn btn-navy" style="margin-top:6px;">Track This Shipment →</a>
+        </div>
+
+        <div class="track-error" id="formError">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/></svg>
+          <span>Something went wrong submitting your request. Please try again or email us directly.</span>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div class="footer-brand">
+      <a href="index.html" class="brand" style="color:white;">
+        <span class="brand-mark"><img src="image/logo.png" alt="Global Network Transit logo"></span>
+        <span>Global Network TRANSIT<br><small>GNT-LOGISTICS</small></span>
+      </a>
+      <p>We move freight by air, sea, and ground — with one manifest number and full visibility from pickup to final mile.</p>
+    </div>
+    <div>
+      <h4>Sitemap</h4>
+      <ul>
+        <li><a href="index.html">Home &amp; Services</a></li>
+        <li><a href="about-contact.html">About Us</a></li>
+        <li><a href="request-shipment.html">Request a Shipment</a></li>
+        <li><a href="tracking.html">Track a Shipment</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Services</h4>
+      <ul>
+        <li><a href="index.html#services">Ground Shipping</a></li>
+        <li><a href="index.html#services">Air Delivery</a></li>
+        <li><a href="index.html#services">Sea Delivery</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Head Office</h4>
+      <div class="footer-contact-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span>1180 Harbor Freight Way, Suite 400, Newark, NJ 07114, USA</span>
+      </div>
+      <div class="footer-contact-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.8 2.1z"/></svg>
+        <span>+1 (908) 555-0148</span>
+      </div>
+      <div class="footer-contact-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="m4 4 8 8 8-8"/></svg>
+        <span>infoglobalnetworktransit@gmail.com</span>
+      </div>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <span>&copy; 2026 Global Network Transit. All rights reserved.</span>
+  </div>
+</footer>
+
+<script>
+// Paste the SAME Apps Script Web App URL you used in js/tracking.js
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8eZhZQkiNV3z8385RmWROwi0hkfZttrdu4eddNcivAaIPg9F3bzBL60fDjGeuABnlfg/exec";
+
+document.getElementById('shipmentForm').addEventListener('submit', function(e){
+  e.preventDefault();
+
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("PASTE_YOUR") === 0) {
+    document.getElementById('formError').classList.add('show');
+    document.getElementById('formError').querySelector('span').textContent =
+      "Booking system isn't connected yet — please email us directly at infoglobalnetworktransit@gmail.com.";
+    return;
+  }
+
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true;
+  submitBtn.style.opacity = '0.6';
+  document.getElementById('formError').classList.remove('show');
+
+  const payload = {
+    reference: document.getElementById('sname').value + (document.getElementById('scompany').value ? ' / ' + document.getElementById('scompany').value : ''),
+    serviceType: document.getElementById('sservice').value,
+    originLabel: document.getElementById('sorigin').value,
+    destination: document.getElementById('sdest').value,
+    eta: document.getElementById('seta').value,
+    note: [
+      document.getElementById('snote').value,
+      'Contact: ' + document.getElementById('semail').value + (document.getElementById('sphone').value ? ' / ' + document.getElementById('sphone').value : '')
+    ].filter(Boolean).join(' — ')
+  };
+
+  // text/plain avoids a CORS preflight request, which Apps Script doesn't handle.
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  })
+    .then(res => res.json())
+    .then(data => {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      if (data.success) {
+        document.getElementById('issuedId').textContent = data.trackingNumber;
+        document.getElementById('trackNowLink').href = 'tracking.html?id=' + encodeURIComponent(data.trackingNumber);
+        document.getElementById('formSuccess').classList.add('show');
+        document.getElementById('shipmentForm').querySelectorAll('input, select, textarea, button[type=submit]').forEach(el => el.style.display = 'none');
+      } else {
+        document.getElementById('formError').classList.add('show');
+      }
+    })
+    .catch(() => {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      document.getElementById('formError').classList.add('show');
+    });
+});
+</script>
+
+<!-- ===== Tawk.to live chat ===== -->
+<script type="text/javascript">
+var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+(function(){
+var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+s1.async=true;
+s1.src='https://embed.tawk.to/6a6064bfaa83a11d48ca6443/1ju48j3qc';
+s1.charset='UTF-8';
+s1.setAttribute('crossorigin','*');
+s0.parentNode.insertBefore(s1,s0);
+})();
+</script>
+</body>
+</html>
