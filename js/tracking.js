@@ -13,7 +13,7 @@
         Package on Hold demanding for Clearance Fees | Out For Delivery | Delivered
    ========================================================================== */
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8eZhZQkiNV3z8385RmWROwi0hkfZttrdu4eddNcivAaIPg9F3bzBL60fDjGeuABnlfg/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwLVjUCpPmQArtPeKw-bex55GP9xDf3F7qPrKPuaMvhRf1xf3a_ETEEy9Oy2A8DLc4OLQ/exec";
 
 (function(){
 
