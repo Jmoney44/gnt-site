@@ -61,6 +61,18 @@
   .empty-state{ text-align:center; padding:60px 20px; color:#7A8792; }
   .refresh-row{ display:flex; gap:10px; }
   .refresh-row .btn{ padding:10px 18px; font-size:12px; }
+
+  @media print{
+    .site-header, .gate, .admin-topbar, .chat-launcher, .chat-panel, #chatLauncher, #chatPanel{ display:none !important; }
+    body{ background:white; }
+    .admin-wrap{ padding:0; max-width:none; }
+    .print-title{ display:block !important; margin-bottom:18px; }
+    .print-table select, .print-table input, .print-table textarea{ display:none; }
+  }
+  .print-title{ display:none; font-family:var(--font-display); font-size:22px; text-transform:uppercase; color:var(--navy-900); }
+  .print-table{ width:100%; border-collapse:collapse; }
+  .print-table th, .print-table td{ border:1px solid #ccc; padding:8px 10px; font-size:12px; text-align:left; }
+  .print-table th{ background:#eee; }
 </style>
 </head>
 <body>
@@ -74,7 +86,7 @@
     <nav class="main-nav" aria-label="Primary">
       <a href="index.html">Home &amp; Services</a>
       <a href="about-contact.html">About &amp; Contact</a>
-      <a href="my-shipment.html" class="nav-cta">Track Shipment</a>
+      <a href="my-shipments.html" class="nav-cta">Track Shipment</a>
     </nav>
   </div>
 </header>
@@ -100,6 +112,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 12a9 9 0 1 1-2.6-6.3M21 4v5h-5"/></svg>
         Refresh
       </button>
+      <button class="btn btn-navy" id="printList">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+        Print / Export
+      </button>
     </div>
   </div>
 
@@ -111,6 +127,8 @@
           <th>Reference</th>
           <th>Service</th>
           <th>Route</th>
+          <th>Description</th>
+          <th>Unit / Qty</th>
           <th>Status</th>
           <th>Current Location</th>
           <th>Lat / Lng</th>
@@ -166,6 +184,7 @@ function isBlockedStatus(text){
 }
 
 let adminPassword = "globalnetworktransit2026";
+let lastShipments = [];
 
 function el(id){ return document.getElementById(id); }
 
@@ -207,7 +226,54 @@ function loadShipments(){
 
 el('refreshList').addEventListener('click', loadShipments);
 
+el('printList').addEventListener('click', function(){
+  if(!lastShipments.length){ return; }
+
+  const rows = lastShipments.map(s => `
+    <tr>
+      <td>${s.TrackingNumber || ''}</td>
+      <td>${s.Reference || ''}</td>
+      <td>${s.ServiceType || ''}</td>
+      <td>${s.OriginLabel || '—'} &rarr; ${s.Destination || '—'}</td>
+      <td>${s.Description || ''}</td>
+      <td>${s.Unit || ''}</td>
+      <td>${s.Status || ''}</td>
+      <td>${s.CurrentLabel || ''}</td>
+      <td>${s.EstimatedDelivery || ''}</td>
+      <td>${s.LastUpdated || ''}</td>
+      <td>${s.Note || ''}</td>
+    </tr>`).join('');
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`
+    <html><head><title>GNT Shipment List — ${new Date().toLocaleDateString()}</title>
+    <style>
+      body{ font-family: Arial, sans-serif; padding:24px; color:#0E1B26; }
+      h1{ font-size:20px; margin-bottom:4px; }
+      p{ font-size:12px; color:#666; margin-bottom:20px; }
+      table{ width:100%; border-collapse:collapse; }
+      th, td{ border:1px solid #ccc; padding:7px 9px; font-size:11.5px; text-align:left; }
+      th{ background:#0C2340; color:white; }
+    </style></head>
+    <body>
+      <h1>Global Network Transit — Shipment List</h1>
+      <p>Generated ${new Date().toLocaleString()} — ${lastShipments.length} shipment(s)</p>
+      <table>
+        <thead><tr>
+          <th>Tracking #</th><th>Reference</th><th>Service</th><th>Route</th>
+          <th>Description</th><th>Unit / Qty</th><th>Status</th>
+          <th>Current Location</th><th>ETA</th><th>Updated</th><th>Note</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <script>window.onload = () => window.print();</script>
+    </body></html>
+  `);
+  printWindow.document.close();
+});
+
 function renderShipments(shipments){
+  lastShipments = shipments;
   const body = el('shipTableBody');
   body.innerHTML = '';
   el('shipCount').textContent = shipments.length + ' shipment' + (shipments.length === 1 ? '' : 's');
@@ -222,6 +288,8 @@ function renderShipments(shipments){
       <td>${s.Reference || ''}</td>
       <td>${s.ServiceType || ''}</td>
       <td style="font-size:12.5px; color:#4A5A66;">${s.OriginLabel || '—'} → ${s.Destination || '—'}</td>
+      <td><input class="f-desc" type="text" value="${(s.Description || '').replace(/"/g,'&quot;')}" placeholder="Item description"></td>
+      <td><input class="f-unit" type="text" value="${(s.Unit || '').replace(/"/g,'&quot;')}" placeholder="e.g. 3 cartons"></td>
       <td>
         <input class="f-status" type="text" list="${listId}" value="${(s.Status || '').replace(/"/g,'&quot;')}" placeholder="Status">
         <datalist id="${listId}">
@@ -275,7 +343,9 @@ function saveRow(trackingNumber, tr, btn){
     currentLat: tr.querySelector('.f-lat').value.trim(),
     currentLng: tr.querySelector('.f-lng').value.trim(),
     eta: tr.querySelector('.f-eta').value,
-    note: tr.querySelector('.f-note').value
+    note: tr.querySelector('.f-note').value,
+    description: tr.querySelector('.f-desc').value,
+    unit: tr.querySelector('.f-unit').value
   };
 
   fetch(APPS_SCRIPT_URL, {

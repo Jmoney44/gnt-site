@@ -9,6 +9,7 @@
 
 <link rel="icon" type="image/png" href="image/favicon.png">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <style>
   .ship-wrap{ max-width:760px; margin:0 auto; }
   .ship-card{
@@ -41,6 +42,29 @@
   .note-box{
     background:var(--paper-dim); border-left:3px solid var(--signal); border-radius:0 3px 3px 0;
     padding:12px 14px; font-size:13.5px; color:#4A5A66; margin-top:4px;
+  }
+  .ship-map-wrap{
+    height:340px; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    position:relative; background:var(--paper-dim);
+  }
+  #shipMap{ height:100%; width:100%; }
+  .ship-map-legend{
+    position:absolute; bottom:12px; left:12px; z-index:400;
+    background:rgba(255,255,255,0.95); border:1px solid var(--line);
+    border-radius:4px; padding:8px 12px; font-family:var(--font-mono); font-size:10.5px;
+    display:flex; gap:12px;
+  }
+  .ship-map-legend .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; }
+  .pulse-dot{
+    width:14px; height:14px; border-radius:50%; background:#1C8A5B; position:relative;
+  }
+  .pulse-dot::after{
+    content:''; position:absolute; inset:-6px; border-radius:50%; border:2px solid #1C8A5B;
+    animation:pulseRing 1.6s ease-out infinite;
+  }
+  @keyframes pulseRing{
+    0%{ transform:scale(0.6); opacity:0.9; }
+    100%{ transform:scale(1.6); opacity:0; }
   }
 
   .ship-footer-row{
@@ -84,7 +108,7 @@
     <nav class="main-nav" aria-label="Primary">
       <a href="index.html">Home &amp; Services</a>
       <a href="about-contact.html">About &amp; Contact</a>
-      <a href="my-shipment.html" class="nav-cta">Track Shipment</a>
+      <a href="my-shipments.html" class="nav-cta">Track Shipment</a>
     </nav>
   </div>
 </header>
@@ -118,7 +142,7 @@
         <li><a href="index.html">Home &amp; Services</a></li>
         <li><a href="about-contact.html">About Us</a></li>
         <li><a href="request-shipment.html">Request a Shipment</a></li>
-        <li><a href="my-shipment.html">Track a Shipment</a></li>
+        <li><a href="my-shipments.html">Track a Shipment</a></li>
       </ul>
     </div>
     <div>
@@ -150,6 +174,7 @@
   </div>
 </footer>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwLVjUCpPmQArtPeKw-bex55GP9xDf3F7qPrKPuaMvhRf1xf3a_ETEEy9Oy2A8DLc4OLQ/exec";
 const AUTO_REFRESH_MS = 30000; // how often to silently re-check status
@@ -199,6 +224,65 @@ function showLookupBox(){
   el('lookupInput').addEventListener('keydown', e => { if(e.key === 'Enter') el('lookupBtn').click(); });
 }
 
+function num(v){
+  const n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+
+let shipMap, shipOriginMarker, shipCurrentMarker, shipDestMarker, shipTraveled, shipRemaining;
+
+function renderShipMap(shipment){
+  const originLat = num(shipment.OriginLat), originLng = num(shipment.OriginLng);
+  const currentLat = num(shipment.CurrentLat) ?? originLat, currentLng = num(shipment.CurrentLng) ?? originLng;
+  const destLat = num(shipment.DestLat), destLng = num(shipment.DestLng);
+
+  if(!shipMap){
+    shipMap = L.map('shipMap', { zoomControl:true, attributionControl:true }).setView([20,0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18, attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(shipMap);
+  }
+
+  [shipOriginMarker, shipCurrentMarker, shipDestMarker, shipTraveled, shipRemaining].forEach(l => { if(l) shipMap.removeLayer(l); });
+
+  function icon(color, pulse){
+    if(pulse){
+      return L.divIcon({ className:'', html:`<div class="pulse-dot" style="background:${color};"></div>`, iconSize:[14,14], iconAnchor:[7,7] });
+    }
+    return L.divIcon({
+      className:'',
+      html:`<div style="width:16px;height:16px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 0 0 2px ${color};"></div>`,
+      iconSize:[16,16], iconAnchor:[8,8]
+    });
+  }
+
+  const bounds = [];
+  if(originLat != null && originLng != null){
+    shipOriginMarker = L.marker([originLat, originLng], { icon: icon('#FF5A1F') }).addTo(shipMap)
+      .bindPopup(`<b>Origin</b><br>${shipment.OriginLabel || ''}`);
+    bounds.push([originLat, originLng]);
+  }
+  if(currentLat != null && currentLng != null){
+    shipCurrentMarker = L.marker([currentLat, currentLng], { icon: icon('#1C8A5B', true) }).addTo(shipMap)
+      .bindPopup(`<b>Current Location</b><br>${shipment.CurrentLabel || ''}`);
+    bounds.push([currentLat, currentLng]);
+  }
+  if(destLat != null && destLng != null){
+    shipDestMarker = L.marker([destLat, destLng], { icon: icon('#16395C') }).addTo(shipMap)
+      .bindPopup(`<b>Destination</b><br>${shipment.Destination || ''}`);
+    bounds.push([destLat, destLng]);
+  }
+  if(originLat != null && currentLat != null){
+    shipTraveled = L.polyline([[originLat, originLng],[currentLat, currentLng]], { color:'#1C8A5B', weight:3 }).addTo(shipMap);
+  }
+  if(currentLat != null && destLat != null){
+    shipRemaining = L.polyline([[currentLat, currentLng],[destLat, destLng]], { color:'#16395C', weight:3, dashArray:'6 8' }).addTo(shipMap);
+  }
+
+  if(bounds.length > 1) shipMap.fitBounds(bounds, { padding:[36,36] });
+  else if(bounds.length === 1) shipMap.setView(bounds[0], 5);
+}
+
 function renderShipment(shipment, isSilentRefresh){
   const statusKey = (shipment.Status || "").trim().toLowerCase();
   const desc = STATUS_DESCRIPTIONS[statusKey] || "We'll update this as your shipment progresses.";
@@ -210,11 +294,22 @@ function renderShipment(shipment, isSilentRefresh){
           <span class="mono">TRACKING NUMBER</span>
           <h2>${shipment.TrackingNumber || ''}</h2>
         </div>
-        <span class="status-pill"><span class="pulse-dot"></span>${shipment.Status || '—'}</span>
+        <span class="status-pill"><span class="pulse-dot" style="width:8px;height:8px;"></span>${shipment.Status || '—'}</span>
+      </div>
+
+      <div class="ship-map-wrap">
+        <div id="shipMap"></div>
+        <div class="ship-map-legend">
+          <span><span class="dot" style="background:#FF5A1F;"></span>Origin</span>
+          <span><span class="dot" style="background:#1C8A5B;"></span>Current</span>
+          <span><span class="dot" style="background:#16395C;"></span>Destination</span>
+        </div>
       </div>
 
       <table class="detail-table">
         <tr><td>Status</td><td>${desc}${shipment.Note ? `<div class="note-box">${shipment.Note}</div>` : ''}</td></tr>
+        <tr><td>Description</td><td>${shipment.Description || '—'}</td></tr>
+        <tr><td>Unit / Quantity</td><td>${shipment.Unit || '—'}</td></tr>
         <tr><td>Service</td><td>${shipment.ServiceType || '—'}</td></tr>
         <tr><td>Origin</td><td>${shipment.OriginLabel || '—'}</td></tr>
         <tr><td>Current Location</td><td>${shipment.CurrentLabel || shipment.OriginLabel || '—'}</td></tr>
@@ -240,6 +335,8 @@ function renderShipment(shipment, isSilentRefresh){
     el('manualRefresh').classList.add('spinning');
     loadShipment(currentId, true).then(() => el('manualRefresh') && el('manualRefresh').classList.remove('spinning'));
   });
+
+  renderShipMap(shipment);
 }
 
 function showNotFound(id){

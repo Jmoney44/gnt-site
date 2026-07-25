@@ -39,7 +39,7 @@
 
     <div class="form-card">
       <h3 style="font-size:22px; margin-bottom:6px;">Shipment Details</h3>
-      <p style="font-size:14px; color:#7A8792; margin-bottom:22px;">Fields marked with an asterisk are required. You'll get a tracking number the moment you submit, save it or bookmark the tracking link we show you.</p>
+      <p style="font-size:14px; color:#7A8792; margin-bottom:22px;">Fields marked with an asterisk are required. You'll get a tracking number the moment you submit — save it or bookmark the tracking link we show you.</p>
 
       <form id="shipmentForm" novalidate>
         <div class="field-row">
@@ -65,9 +65,13 @@
           <div class="field"><label for="sorigin">Origin (pickup location) *</label><input id="sorigin" name="sorigin" type="text" required placeholder="e.g. Shenzhen, Guangdong, China"></div>
           <div class="field"><label for="sdest">Destination *</label><input id="sdest" name="sdest" type="text" required placeholder="e.g. Newark, NJ, USA"></div>
         </div>
+        <div class="field-row">
+          <div class="field"><label for="sdesc">Item description</label><input id="sdesc" name="sdesc" type="text" placeholder="e.g. Electronics — 3 cartons"></div>
+          <div class="field"><label for="sunit">Unit / quantity</label><input id="sunit" name="sunit" type="text" placeholder="e.g. 3 cartons, 120 kg, 2 pallets"></div>
+        </div>
         <div class="field">
-          <label for="snote">Cargo details / notes</label>
-          <textarea id="snote" name="snote" placeholder="Cargo type, approximate volume, special handling..."></textarea>
+          <label for="snote">Additional notes</label>
+          <textarea id="snote" name="snote" placeholder="Special handling, timing constraints, etc."></textarea>
         </div>
 
         <button type="submit" class="btn btn-signal" id="submitBtn">
@@ -83,7 +87,7 @@
             <span>Your tracking number has been issued:</span>
           </div>
           <b class="mono" id="issuedId" style="font-size:20px; color:var(--navy-900);">—</b>
-          <a href="https://jmoney44.github.io/gnt-site/my-shipment.html" id="trackNowLink" class="btn btn-navy" style="margin-top:6px;">Track This Shipment →</a>
+          <a href="#" id="trackNowLink" class="btn btn-navy" style="margin-top:6px;">View Your Shipment →</a>
         </div>
 
         <div class="track-error" id="formError">
@@ -103,7 +107,7 @@
         <span class="brand-mark"><img src="image/logo.png" alt="Global Network Transit logo"></span>
         <span>Global Network TRANSIT<br><small>GNT-LOGISTICS</small></span>
       </a>
-      <p>We move freight by air, sea, and ground, with one manifest number and full visibility from pickup to final mile.</p>
+      <p>We move freight by air, sea, and ground — with one manifest number and full visibility from pickup to final mile.</p>
     </div>
     <div>
       <h4>Sitemap</h4>
@@ -168,6 +172,8 @@ document.getElementById('shipmentForm').addEventListener('submit', function(e){
     originLabel: document.getElementById('sorigin').value,
     destination: document.getElementById('sdest').value,
     eta: document.getElementById('seta').value,
+    description: document.getElementById('sdesc').value,
+    unit: document.getElementById('sunit').value,
     note: [
       document.getElementById('snote').value,
       'Contact: ' + document.getElementById('semail').value + (document.getElementById('sphone').value ? ' / ' + document.getElementById('sphone').value : '')
