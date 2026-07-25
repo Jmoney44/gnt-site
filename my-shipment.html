@@ -307,9 +307,10 @@ function renderShipment(shipment, isSilentRefresh){
       </div>
 
       <table class="detail-table">
-        <tr><td>Status</td><td>${desc}${shipment.Note ? `<div class="note-box">${shipment.Note}</div>` : ''}</td></tr>
-        <tr><td>Description</td><td>${shipment.Description || '—'}</td></tr>
+        <tr><td>Status</td><td>${desc}</td></tr>
+        <tr><td>Item Description</td><td>${shipment.Description || '—'}</td></tr>
         <tr><td>Unit / Quantity</td><td>${shipment.Unit || '—'}</td></tr>
+        <tr><td>Description</td><td>${shipment.Note ? `<div class="note-box">${shipment.Note}</div>` : '—'}</td></tr>
         <tr><td>Service</td><td>${shipment.ServiceType || '—'}</td></tr>
         <tr><td>Origin</td><td>${shipment.OriginLabel || '—'}</td></tr>
         <tr><td>Current Location</td><td>${shipment.CurrentLabel || shipment.OriginLabel || '—'}</td></tr>

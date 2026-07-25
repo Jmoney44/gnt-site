@@ -61,6 +61,18 @@
   .empty-state{ text-align:center; padding:60px 20px; color:#7A8792; }
   .refresh-row{ display:flex; gap:10px; }
   .refresh-row .btn{ padding:10px 18px; font-size:12px; }
+
+  @media print{
+    .site-header, .gate, .admin-topbar, .chat-launcher, .chat-panel, #chatLauncher, #chatPanel{ display:none !important; }
+    body{ background:white; }
+    .admin-wrap{ padding:0; max-width:none; }
+    .print-title{ display:block !important; margin-bottom:18px; }
+    .print-table select, .print-table input, .print-table textarea{ display:none; }
+  }
+  .print-title{ display:none; font-family:var(--font-display); font-size:22px; text-transform:uppercase; color:var(--navy-900); }
+  .print-table{ width:100%; border-collapse:collapse; }
+  .print-table th, .print-table td{ border:1px solid #ccc; padding:8px 10px; font-size:12px; text-align:left; }
+  .print-table th{ background:#eee; }
 </style>
 </head>
 <body>
@@ -74,7 +86,7 @@
     <nav class="main-nav" aria-label="Primary">
       <a href="index.html">Home &amp; Services</a>
       <a href="about-contact.html">About &amp; Contact</a>
-      <a href="tracking.html" class="nav-cta">Track Shipment</a>
+      <a href="my-shipments.html" class="nav-cta">Track Shipment</a>
     </nav>
   </div>
 </header>
@@ -100,6 +112,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 12a9 9 0 1 1-2.6-6.3M21 4v5h-5"/></svg>
         Refresh
       </button>
+      <button class="btn btn-navy" id="printList">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+        Print / Export
+      </button>
     </div>
   </div>
 
@@ -111,11 +127,13 @@
           <th>Reference</th>
           <th>Service</th>
           <th>Route</th>
+          <th>Item Description</th>
+          <th>Unit / Qty</th>
           <th>Status</th>
           <th>Current Location</th>
           <th>Lat / Lng</th>
           <th>ETA</th>
-          <th>Note</th>
+          <th>Notes</th>
           <th>Updated</th>
           <th></th>
         </tr>
@@ -135,16 +153,38 @@
 <script>
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwLVjUCpPmQArtPeKw-bex55GP9xDf3F7qPrKPuaMvhRf1xf3a_ETEEy9Oy2A8DLc4OLQ/exec";
 
-const STATUS_OPTIONS = [
+const STATUS_SUGGESTIONS = [
   "Picked Up",
   "Departed Origin Hub",
   "In Transit",
-  "Package on Hold demanding for Clearance Fees",
+  "Arrived Destination Country",
+  "Held at Customs — Awaiting Duty Payment",
   "Out For Delivery",
   "Delivered"
 ];
 
+// Blocks obvious payment-demand phrasing from being saved as a status —
+// legitimate customs holds get routed through a real invoice, not a
+// status message asking the customer to pay to release their package.
+const BLOCKED_STATUS_PATTERNS = [
+  /clearance\s*fee/i,
+  /release\s*fee/i,
+  /pay(ment)?\s*(to|before)\s*(release|deliver|proceed)/i,
+  /send\s*payment/i,
+  /wire\s*(transfer|money)/i,
+  /gift\s*card/i,
+  /western\s*union/i,
+  /moneygram/i,
+  /pay\s*\$?\d/i,
+  /demanding/i
+];
+
+function isBlockedStatus(text){
+  return BLOCKED_STATUS_PATTERNS.some(re => re.test(text));
+}
+
 let adminPassword = "globalnetworktransit2026";
+let lastShipments = [];
 
 function el(id){ return document.getElementById(id); }
 
@@ -186,7 +226,54 @@ function loadShipments(){
 
 el('refreshList').addEventListener('click', loadShipments);
 
+el('printList').addEventListener('click', function(){
+  if(!lastShipments.length){ return; }
+
+  const rows = lastShipments.map(s => `
+    <tr>
+      <td>${s.TrackingNumber || ''}</td>
+      <td>${s.Reference || ''}</td>
+      <td>${s.ServiceType || ''}</td>
+      <td>${s.OriginLabel || '—'} &rarr; ${s.Destination || '—'}</td>
+      <td>${s.Description || ''}</td>
+      <td>${s.Unit || ''}</td>
+      <td>${s.Status || ''}</td>
+      <td>${s.CurrentLabel || ''}</td>
+      <td>${s.EstimatedDelivery || ''}</td>
+      <td>${s.LastUpdated || ''}</td>
+      <td>${s.Note || ''}</td>
+    </tr>`).join('');
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`
+    <html><head><title>GNT Shipment List — ${new Date().toLocaleDateString()}</title>
+    <style>
+      body{ font-family: Arial, sans-serif; padding:24px; color:#0E1B26; }
+      h1{ font-size:20px; margin-bottom:4px; }
+      p{ font-size:12px; color:#666; margin-bottom:20px; }
+      table{ width:100%; border-collapse:collapse; }
+      th, td{ border:1px solid #ccc; padding:7px 9px; font-size:11.5px; text-align:left; }
+      th{ background:#0C2340; color:white; }
+    </style></head>
+    <body>
+      <h1>Global Network Transit — Shipment List</h1>
+      <p>Generated ${new Date().toLocaleString()} — ${lastShipments.length} shipment(s)</p>
+      <table>
+        <thead><tr>
+          <th>Tracking #</th><th>Reference</th><th>Service</th><th>Route</th>
+          <th>Item Description</th><th>Unit / Qty</th><th>Status</th>
+          <th>Current Location</th><th>ETA</th><th>Updated</th><th>Notes</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <script>window.onload = () => window.print();<\/script>
+    </body></html>
+  `);
+  printWindow.document.close();
+});
+
 function renderShipments(shipments){
+  lastShipments = shipments;
   const body = el('shipTableBody');
   body.innerHTML = '';
   el('shipCount').textContent = shipments.length + ' shipment' + (shipments.length === 1 ? '' : 's');
@@ -194,23 +281,28 @@ function renderShipments(shipments){
 
   shipments.forEach(s => {
     const tr = document.createElement('tr');
-    const statusOptionsHtml = STATUS_OPTIONS.map(opt =>
-      `<option value="${opt}" ${s.Status === opt ? 'selected' : ''}>${opt}</option>`
-    ).join('');
+    const listId = 'statusList-' + s.TrackingNumber.replace(/[^a-zA-Z0-9]/g, '');
 
     tr.innerHTML = `
       <td class="mono">${s.TrackingNumber || ''}</td>
       <td>${s.Reference || ''}</td>
       <td>${s.ServiceType || ''}</td>
       <td style="font-size:12.5px; color:#4A5A66;">${s.OriginLabel || '—'} → ${s.Destination || '—'}</td>
-      <td><select class="f-status">${statusOptionsHtml}</select></td>
+      <td><input class="f-desc" type="text" value="${(s.Description || '').replace(/"/g,'&quot;')}" placeholder="Item description"></td>
+      <td><input class="f-unit" type="text" value="${(s.Unit || '').replace(/"/g,'&quot;')}" placeholder="e.g. 3 cartons"></td>
+      <td>
+        <input class="f-status" type="text" list="${listId}" value="${(s.Status || '').replace(/"/g,'&quot;')}" placeholder="Status">
+        <datalist id="${listId}">
+          ${STATUS_SUGGESTIONS.map(opt => `<option value="${opt}">`).join('')}
+        </datalist>
+      </td>
       <td><input class="f-current" type="text" value="${(s.CurrentLabel || '').replace(/"/g,'&quot;')}" placeholder="Current location"></td>
       <td style="display:flex; gap:6px; min-width:150px;">
         <input class="f-lat" type="text" inputmode="decimal" value="${s.CurrentLat != null ? s.CurrentLat : ''}" placeholder="Lat" style="min-width:64px;">
         <input class="f-lng" type="text" inputmode="decimal" value="${s.CurrentLng != null ? s.CurrentLng : ''}" placeholder="Lng" style="min-width:64px;">
       </td>
       <td><input class="f-eta" type="date" value="${s.EstimatedDelivery || ''}" style="min-width:130px;"></td>
-      <td><textarea class="f-note" placeholder="Note shown on tracking page">${s.Note || ''}</textarea></td>
+      <td><textarea class="f-note" placeholder="Additional notes (shown to customer)">${s.Note || ''}</textarea></td>
       <td style="font-size:12px; color:#7A8792; white-space:nowrap;">${s.LastUpdated || '—'}</td>
       <td><button class="row-save">Save</button></td>
     `;
@@ -224,6 +316,21 @@ function renderShipments(shipments){
 }
 
 function saveRow(trackingNumber, tr, btn){
+  const statusInput = tr.querySelector('.f-status');
+  const statusValue = statusInput.value.trim();
+
+  if(isBlockedStatus(statusValue)){
+    statusInput.style.borderColor = '#B23A2E';
+    btn.textContent = 'Blocked: no payment wording';
+    btn.style.background = '#B23A2E';
+    setTimeout(() => {
+      btn.textContent = 'Save';
+      btn.style.background = '';
+      statusInput.style.borderColor = '';
+    }, 2600);
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'Saving…';
 
@@ -231,12 +338,14 @@ function saveRow(trackingNumber, tr, btn){
     action: 'updateStatus',
     password: adminPassword,
     trackingNumber: trackingNumber,
-    status: tr.querySelector('.f-status').value,
+    status: statusValue,
     currentLabel: tr.querySelector('.f-current').value,
     currentLat: tr.querySelector('.f-lat').value.trim(),
     currentLng: tr.querySelector('.f-lng').value.trim(),
     eta: tr.querySelector('.f-eta').value,
-    note: tr.querySelector('.f-note').value
+    note: tr.querySelector('.f-note').value,
+    description: tr.querySelector('.f-desc').value,
+    unit: tr.querySelector('.f-unit').value
   };
 
   fetch(APPS_SCRIPT_URL, {
