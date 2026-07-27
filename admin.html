@@ -280,8 +280,14 @@ function renderShipments(shipments){
   el('emptyState').style.display = shipments.length ? 'none' : 'block';
 
   shipments.forEach(s => {
+    if(!s || !s.TrackingNumber || String(s.TrackingNumber).trim() === ''){
+      return; // skip malformed/blank rows
+    }
     const tr = document.createElement('tr');
-    const listId = 'statusList-' + s.TrackingNumber.replace(/[^a-zA-Z0-9]/g, '');
+    const listId = 'statusList-' + String(s.TrackingNumber).replace(/[^a-zA-Z0-9]/g, '');
+    const validShipments = shipments.filter(s => s && s.TrackingNumber && String(s.TrackingNumber).trim() !== '');
+el('shipCount').textContent = validShipments.length + ' shipment' + (validShipments.length === 1 ? '' : 's');
+el('emptyState').style.display = validShipments.length ? 'none' : 'block';
 
     tr.innerHTML = `
       <td class="mono">${s.TrackingNumber || ''}</td>

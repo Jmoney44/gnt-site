@@ -284,6 +284,13 @@ function renderShipMap(shipment){
 }
 
 function renderShipment(shipment, isSilentRefresh){
+  // Destroy the old Leaflet instance BEFORE the container div is wiped out by innerHTML.
+  // Leaflet doesn't know its container is about to disappear, so we clean it up manually.
+  if(shipMap){
+    shipMap.remove();
+    shipMap = null;
+    shipOriginMarker = shipCurrentMarker = shipDestMarker = shipTraveled = shipRemaining = null;
+  }
   const statusKey = (shipment.Status || "").trim().toLowerCase();
   const desc = STATUS_DESCRIPTIONS[statusKey] || "We'll update this as your shipment progresses.";
 
