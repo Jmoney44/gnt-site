@@ -62,6 +62,33 @@
   .refresh-row{ display:flex; gap:10px; }
   .refresh-row .btn{ padding:10px 18px; font-size:12px; }
 
+  .modal-backdrop{
+    display:none; position:fixed; inset:0; background:rgba(10,27,43,0.55);
+    z-index:1000; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-backdrop.open{ display:flex; }
+  .modal-box{
+    background:var(--white); border-radius:6px; max-width:480px; width:100%;
+    padding:28px; box-shadow:var(--shadow-soft);
+  }
+  .modal-box h3{ font-size:19px; margin-bottom:4px; }
+  .modal-box .mono-sub{ font-family:var(--font-mono); font-size:12px; color:#7A8792; margin-bottom:20px; display:block; }
+  .modal-field{ margin-bottom:14px; }
+  .modal-field label{
+    display:block; font-family:var(--font-mono); font-size:11px; letter-spacing:0.06em;
+    text-transform:uppercase; color:var(--navy-800); margin-bottom:6px;
+  }
+  .modal-field input, .modal-field select{
+    width:100%; border:1.5px solid var(--line); border-radius:3px; padding:10px 12px; font-size:14px;
+  }
+  .modal-actions{ display:flex; gap:10px; margin-top:22px; }
+  .modal-actions .btn{ flex:1; justify-content:center; padding:11px; }
+  .modal-cancel{
+    background:var(--white); border:1px solid var(--line); color:var(--navy-800);
+    border-radius:3px; font-family:var(--font-mono); font-size:12.5px; font-weight:600;
+    letter-spacing:0.05em; text-transform:uppercase; flex:1; cursor:pointer;
+  }
+
   @media print{
     .site-header, .gate, .admin-topbar, .chat-launcher, .chat-panel, #chatLauncher, #chatPanel{ display:none !important; }
     body{ background:white; }
@@ -86,7 +113,7 @@
     <nav class="main-nav" aria-label="Primary">
       <a href="index.html">Home &amp; Services</a>
       <a href="about-contact.html">About &amp; Contact</a>
-      <a href="tracking.html" class="nav-cta">Track Shipment</a>
+      <a href="my-shipment.html" class="nav-cta">Track Shipment</a>
     </nav>
   </div>
 </header>
@@ -127,13 +154,13 @@
           <th>Reference</th>
           <th>Service</th>
           <th>Route</th>
-          <th>Description</th>
+          <th>Item Description</th>
           <th>Unit / Qty</th>
           <th>Status</th>
           <th>Current Location</th>
           <th>Lat / Lng</th>
           <th>ETA</th>
-          <th>Note</th>
+          <th>Notes</th>
           <th>Updated</th>
           <th></th>
         </tr>
@@ -148,6 +175,41 @@
     blank and just update the location text. Only fill Lat/Lng manually if the auto-lookup gets a
     place wrong or you want to pin an exact address.
   </p>
+</div>
+
+<!-- ---------------------------------------------------------------- EDIT MODAL -->
+<div class="modal-backdrop" id="editBackdrop">
+  <div class="modal-box">
+    <h3>Edit Shipment</h3>
+    <span class="mono-sub" id="editTrackingLabel">GNT-XXXXXXX-CN</span>
+
+    <div class="modal-field">
+      <label for="editReference">Reference / Customer</label>
+      <input id="editReference" type="text">
+    </div>
+    <div class="modal-field">
+      <label for="editService">Service</label>
+      <select id="editService">
+        <option value="Ground Shipping">Ground Shipping</option>
+        <option value="Air Freight">Air Freight</option>
+        <option value="Sea Freight">Sea Freight</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label for="editOrigin">Origin (pickup location)</label>
+      <input id="editOrigin" type="text">
+    </div>
+    <div class="modal-field">
+      <label for="editDestination">Destination</label>
+      <input id="editDestination" type="text">
+    </div>
+    <p style="font-size:12px; color:#7A8792; margin-top:-6px;">Changing Origin or Destination re-locates the map pins and updates the route shown to the customer.</p>
+
+    <div class="modal-actions">
+      <button class="modal-cancel" id="editCancel">Cancel</button>
+      <button class="btn btn-signal" id="editSave">Save Changes</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -261,8 +323,8 @@ el('printList').addEventListener('click', function(){
       <table>
         <thead><tr>
           <th>Tracking #</th><th>Reference</th><th>Service</th><th>Route</th>
-          <th>Description</th><th>Unit / Qty</th><th>Status</th>
-          <th>Current Location</th><th>ETA</th><th>Updated</th><th>Note</th>
+          <th>Item Description</th><th>Unit / Qty</th><th>Status</th>
+          <th>Current Location</th><th>ETA</th><th>Updated</th><th>Notes</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -276,18 +338,14 @@ function renderShipments(shipments){
   lastShipments = shipments;
   const body = el('shipTableBody');
   body.innerHTML = '';
-  el('shipCount').textContent = shipments.length + ' shipment' + (shipments.length === 1 ? '' : 's');
-  el('emptyState').style.display = shipments.length ? 'none' : 'block';
 
-  shipments.forEach(s => {
-    if(!s || !s.TrackingNumber || String(s.TrackingNumber).trim() === ''){
-      return; // skip malformed/blank rows
-    }
+  const validShipments = shipments.filter(s => s && s.TrackingNumber && String(s.TrackingNumber).trim() !== '');
+  el('shipCount').textContent = validShipments.length + ' shipment' + (validShipments.length === 1 ? '' : 's');
+  el('emptyState').style.display = validShipments.length ? 'none' : 'block';
+
+  validShipments.forEach(s => {
     const tr = document.createElement('tr');
     const listId = 'statusList-' + String(s.TrackingNumber).replace(/[^a-zA-Z0-9]/g, '');
-    const validShipments = shipments.filter(s => s && s.TrackingNumber && String(s.TrackingNumber).trim() !== '');
-el('shipCount').textContent = validShipments.length + ' shipment' + (validShipments.length === 1 ? '' : 's');
-el('emptyState').style.display = validShipments.length ? 'none' : 'block';
 
     tr.innerHTML = `
       <td class="mono">${s.TrackingNumber || ''}</td>
@@ -308,10 +366,26 @@ el('emptyState').style.display = validShipments.length ? 'none' : 'block';
         <input class="f-lng" type="text" inputmode="decimal" value="${s.CurrentLng != null ? s.CurrentLng : ''}" placeholder="Lng" style="min-width:64px;">
       </td>
       <td><input class="f-eta" type="date" value="${s.EstimatedDelivery || ''}" style="min-width:130px;"></td>
-      <td><textarea class="f-note" placeholder="Note shown on tracking page">${s.Note || ''}</textarea></td>
+      <td><textarea class="f-note" placeholder="Additional notes (shown to customer)">${s.Note || ''}</textarea></td>
       <td style="font-size:12px; color:#7A8792; white-space:nowrap;">${s.LastUpdated || '—'}</td>
-      <td><button class="row-save">Save</button></td>
+      <td style="white-space:nowrap;">
+        <button class="row-save">Save</button>
+        <button class="row-edit" style="margin-top:6px; width:100%; background:var(--white); border:1px solid var(--line); color:var(--navy-800); border-radius:3px; padding:6px 10px; font-family:var(--font-mono); font-size:11px; letter-spacing:0.05em; text-transform:uppercase;">Edit</button>
+        <button class="row-delete" style="margin-top:6px; width:100%; background:var(--white); border:1px solid #B23A2E; color:#B23A2E; border-radius:3px; padding:6px 10px; font-family:var(--font-mono); font-size:11px; letter-spacing:0.05em; text-transform:uppercase;">Delete</button>
+      </td>
     `;
+
+    tr.dataset.reference = s.Reference || '';
+    tr.dataset.serviceType = s.ServiceType || '';
+    tr.dataset.originLabel = s.OriginLabel || '';
+    tr.dataset.destination = s.Destination || '';
+
+    tr.querySelector('.row-edit').addEventListener('click', function(){
+      openEditModal(s.TrackingNumber, tr);
+    });
+    tr.querySelector('.row-delete').addEventListener('click', function(){
+      deleteRow(s.TrackingNumber, tr, this);
+    });
 
     tr.querySelector('.row-save').addEventListener('click', function(){
       saveRow(s.TrackingNumber, tr, this);
@@ -319,6 +393,106 @@ el('emptyState').style.display = validShipments.length ? 'none' : 'block';
 
     body.appendChild(tr);
   });
+}
+
+// ---------------------------------------------------------------- edit modal
+
+let editingTrackingNumber = null;
+
+function openEditModal(trackingNumber, tr){
+  editingTrackingNumber = trackingNumber;
+  el('editTrackingLabel').textContent = trackingNumber;
+  el('editReference').value = tr.dataset.reference || '';
+  el('editService').value = tr.dataset.serviceType || 'Ground Shipping';
+  el('editOrigin').value = tr.dataset.originLabel || '';
+  el('editDestination').value = tr.dataset.destination || '';
+  el('editBackdrop').classList.add('open');
+}
+
+function closeEditModal(){
+  el('editBackdrop').classList.remove('open');
+  editingTrackingNumber = null;
+}
+
+el('editCancel').addEventListener('click', closeEditModal);
+el('editBackdrop').addEventListener('click', function(e){
+  if(e.target === el('editBackdrop')) closeEditModal();
+});
+
+el('editSave').addEventListener('click', function(){
+  if(!editingTrackingNumber) return;
+  const saveBtn = this;
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+
+  const payload = {
+    action: 'updateStatus',
+    password: adminPassword,
+    trackingNumber: editingTrackingNumber,
+    reference: el('editReference').value,
+    serviceType: el('editService').value,
+    originLabel: el('editOrigin').value,
+    destination: el('editDestination').value
+  };
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  })
+    .then(res => res.json())
+    .then(data => {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Changes';
+      if(data.success){
+        closeEditModal();
+        loadShipments();
+      } else {
+        alert('Failed to save: ' + (data.error || 'unknown error'));
+      }
+    })
+    .catch(() => {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Changes';
+      alert('Failed to save — check your connection and try again.');
+    });
+});
+
+// ---------------------------------------------------------------- delete
+
+function deleteRow(trackingNumber, tr, btn){
+  const confirmed = window.confirm(
+    'Delete shipment ' + trackingNumber + '? This removes it permanently from the sheet — ' +
+    'only do this once the package has been delivered and you no longer need the record.'
+  );
+  if(!confirmed) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Deleting…';
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'deleteShipment', password: adminPassword, trackingNumber: trackingNumber })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if(data.success){
+        tr.remove();
+        lastShipments = lastShipments.filter(s => s.TrackingNumber !== trackingNumber);
+        el('shipCount').textContent = lastShipments.length + ' shipment' + (lastShipments.length === 1 ? '' : 's');
+        el('emptyState').style.display = lastShipments.length ? 'none' : 'block';
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Delete';
+        alert('Failed to delete: ' + (data.error || 'unknown error'));
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.textContent = 'Delete';
+      alert('Failed to delete — check your connection and try again.');
+    });
 }
 
 function saveRow(trackingNumber, tr, btn){

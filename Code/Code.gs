@@ -36,7 +36,8 @@ const ADMIN_PASSWORD = "CHANGE_ME_TO_A_REAL_PASSWORD";
 const HEADERS = [
   "TrackingNumber","Reference","ServiceType","Status","Destination",
   "DestLat","DestLng","OriginLabel","OriginLat","OriginLng",
-  "CurrentLabel","CurrentLat","CurrentLng","EstimatedDelivery","LastUpdated","Note"
+  "CurrentLabel","CurrentLat","CurrentLng","EstimatedDelivery","LastUpdated","Note",
+  "Description","Unit"
 ];
 
 function getSheet_() {
@@ -49,8 +50,11 @@ function jsonOut_(obj) {
 }
 
 function generateTrackingNumber_(sheet) {
-  const existing = new Set(sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 0), 1)
-    .getValues().flat().map(v => String(v).trim().toUpperCase()));
+  const lastRow = sheet.getLastRow();
+  const numDataRows = lastRow - 1; // rows below the header
+  const existing = numDataRows > 0
+    ? new Set(sheet.getRange(2, 1, numDataRows, 1).getValues().flat().map(v => String(v).trim().toUpperCase()))
+    : new Set();
   let id;
   do {
     const digits = Math.floor(1000000 + Math.random() * 8999999);
@@ -140,6 +144,9 @@ function doPost(e) {
   if (data.action === "updateStatus") {
     return handleUpdateStatus_(data);
   }
+  if (data.action === "deleteShipment") {
+    return handleDeleteShipment_(data);
+  }
   return handleCreateShipment_(data);
 }
 
@@ -189,11 +196,38 @@ function handleCreateShipment_(data) {
       originLng || "",
       eta,
       today,
-      data.note || ""
+      data.note || "",
+      data.description || "",
+      data.unit || ""
     ];
     sheet.appendRow(row);
 
     return jsonOut_({ success: true, trackingNumber: trackingNumber });
+  } catch (err) {
+    return jsonOut_({ success: false, error: String(err) });
+  }
+}
+
+function handleDeleteShipment_(data) {
+  if (data.password !== ADMIN_PASSWORD) {
+    return jsonOut_({ success: false, error: "Unauthorized" });
+  }
+  if (!data.trackingNumber) {
+    return jsonOut_({ success: false, error: "Missing trackingNumber" });
+  }
+
+  try {
+    const sheet = getSheet_();
+    const values = sheet.getDataRange().getValues();
+    const target = String(data.trackingNumber).trim().toUpperCase();
+
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][0]).trim().toUpperCase() === target) {
+        sheet.deleteRow(i + 1); // 1-indexed sheet row
+        return jsonOut_({ success: true });
+      }
+    }
+    return jsonOut_({ success: false, error: "Tracking number not found" });
   } catch (err) {
     return jsonOut_({ success: false, error: String(err) });
   }
@@ -223,6 +257,32 @@ function handleUpdateStatus_(data) {
         if (data.status !== undefined) {
           sheet.getRange(rowNum, colIndex["Status"] + 1).setValue(data.status);
         }
+        if (data.reference !== undefined) {
+          sheet.getRange(rowNum, colIndex["Reference"] + 1).setValue(data.reference);
+        }
+        if (data.serviceType !== undefined) {
+          sheet.getRange(rowNum, colIndex["ServiceType"] + 1).setValue(data.serviceType);
+        }
+
+        // Editing Origin or Destination re-geocodes so the map direction
+        // on the customer's page actually reflects the new route.
+        if (data.originLabel !== undefined) {
+          sheet.getRange(rowNum, colIndex["OriginLabel"] + 1).setValue(data.originLabel);
+          const gOrigin = geocode_(data.originLabel);
+          if (gOrigin) {
+            sheet.getRange(rowNum, colIndex["OriginLat"] + 1).setValue(gOrigin.lat);
+            sheet.getRange(rowNum, colIndex["OriginLng"] + 1).setValue(gOrigin.lng);
+          }
+        }
+        if (data.destination !== undefined) {
+          sheet.getRange(rowNum, colIndex["Destination"] + 1).setValue(data.destination);
+          const gDest = geocode_(data.destination);
+          if (gDest) {
+            sheet.getRange(rowNum, colIndex["DestLat"] + 1).setValue(gDest.lat);
+            sheet.getRange(rowNum, colIndex["DestLng"] + 1).setValue(gDest.lng);
+          }
+        }
+
         if (data.currentLabel !== undefined) {
           sheet.getRange(rowNum, colIndex["CurrentLabel"] + 1).setValue(data.currentLabel);
         }
@@ -241,6 +301,12 @@ function handleUpdateStatus_(data) {
         }
         if (data.note !== undefined) {
           sheet.getRange(rowNum, colIndex["Note"] + 1).setValue(data.note);
+        }
+        if (data.description !== undefined) {
+          sheet.getRange(rowNum, colIndex["Description"] + 1).setValue(data.description);
+        }
+        if (data.unit !== undefined) {
+          sheet.getRange(rowNum, colIndex["Unit"] + 1).setValue(data.unit);
         }
         if (data.eta !== undefined) {
           sheet.getRange(rowNum, colIndex["EstimatedDelivery"] + 1).setValue(data.eta);
